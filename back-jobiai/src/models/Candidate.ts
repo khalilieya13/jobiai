@@ -6,6 +6,7 @@ export interface ICandidate extends Document {
     phone: string;
     address: string;
     bio: string;
+    experienceYears: number;
     skills: string[]; // Ajout du champ skills
     createdBy: mongoose.Schema.Types.ObjectId;
 }
@@ -38,6 +39,12 @@ const CandidateSchema = new mongoose.Schema<ICandidate>({
     skills: {
         type: [String], // Tableau de compétences
         default: []
+    },
+    experienceYears: {
+        type: Number,
+        required: false,
+        default: 0,
+        min: 0
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,

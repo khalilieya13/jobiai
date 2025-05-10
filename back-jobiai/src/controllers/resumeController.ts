@@ -88,3 +88,27 @@ export const deleteResume = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Erreur lors de la suppression du CV", error });
     }
 };
+// Exemple : GET /resume/search?skills=React,Node.js&experience=Senior Level
+export const searchResumes = async (req: Request, res: Response) => {
+    try {
+        const query: any = {};
+
+        if (req.query.skills) {
+            query['skills.name'] = { $in: (req.query.skills as string).split(',') };
+        }
+
+        if (req.query.education) {
+            query['education.title'] = { $in: (req.query.education as string).split(',') };
+        }
+
+        if (req.query.experienceLevel) {
+            query['experience.level'] = { $in: (req.query.experienceLevel as string).split(',') };
+        }
+
+        const resumes = await Resume.find(query);
+        res.status(200).json(resumes);
+    } catch (error) {
+        res.status(500).json({ message: 'Erreur lors de la recherche de CV', error });
+    }
+};
+

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { Mail, Lock,  BriefcaseIcon } from 'lucide-react';
+import { Mail, Lock, BriefcaseIcon } from 'lucide-react';
 
 export function Register() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [userType, setUserType] = useState<'candidate' | 'recruiter'>('candidate');
@@ -20,11 +21,22 @@ export function Register() {
         role: userType
       });
 
-      console.log("✅ Inscription réussie :", response.data);
-      alert("Inscription réussie ! Vérifiez votre email.");
+      console.log("✅ Registration successful:", response.data);
+
+      // Save token and role in localStorage
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('role', response.data.role);
+
+      // Redirect based on role
+      if (response.data.role === 'candidate') {
+        navigate('/jobs');
+      } else {
+        navigate('/candidates');
+      }
+
     } catch (err: any) {
-      console.error("❌ Erreur d'inscription :", err.response?.data || err.message);
-      setError(err.response?.data?.message || "Une erreur s'est produite.");
+      console.error("❌ Registration error:", err.response?.data || err.message);
+      setError(err.response?.data?.message || "An error occurred.");
     }
   };
 

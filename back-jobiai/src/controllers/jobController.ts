@@ -87,3 +87,90 @@ export const deleteJob = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Erreur lors de la suppression de l'offre", error });
     }
 };
+
+// 📌 Récupérer tous les jobs d'une entreprise liée à l'utilisateur connecté
+export const getCompanyJobs = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: "Non autorisé" });
+        }
+
+        // 🔒 Récupérer l'entreprise liée à l'utilisateur
+        const companyResponse = await axios.get("http://localhost:5000/jobiai/api/company", {
+            headers: { Authorization: req.headers.authorization }
+        });
+
+        const company = companyResponse.data;
+
+        if (!company) {
+            return res.status(404).json({ message: "Entreprise non trouvée" });
+        }
+
+        // 🔍 Récupérer les filtres depuis la requête, mais les rendre optionnels
+        const { jobTitle, department, status, createdAt } = req.query;
+
+        // Construction de la requête de recherche
+        const query: any = { idCompany: company._id };
+
+        // Appliquer les filtres seulement s'ils sont définis
+        if (jobTitle) {
+            query.jobTitle = { $regex: jobTitle, $options: "i" };
+        }
+        if (department) {
+            query.department = { $regex: department, $options: "i" };
+        }
+        if (status) {
+            query.status = status;
+        }
+        if (createdAt) {
+            const date = new Date(createdAt as string);
+            const nextDate = new Date(date);
+            nextDate.setDate(date.getDate() + 1);
+
+            query.createdAt = { $gte: date, $lt: nextDate };
+        }
+
+        // Requête pour récupérer les jobs
+        const jobs = await Job.find(query).sort({ createdAt: -1 });
+
+        res.status(200).json({ jobs });
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la récupération des offres", error });
+    }
+};
+
+
+export const searchJobs = async (req: Request, res: Response) => {
+    try {
+        const { employmentType, workMode, experience, salaryMin, salaryMax } = req.query;
+
+        const query: any = {};
+
+        if (employmentType) {
+            query.employmentType = employmentType;
+        }
+
+        if (workMode) {
+            query.workMode = workMode;
+        }
+
+        if (experience) {
+            query.experienceLevel = experience;
+        }
+
+        if (salaryMin || salaryMax) {
+            if (salaryMin) {
+                query['salaryRange.min'] = { $gte: Number(salaryMin) };
+            }
+            if (salaryMax) {
+                query['salaryRange.max'] = { $lte: Number(salaryMax) };
+            }
+        }
+
+        const jobs = await Job.find(query).populate('idCompany');
+        res.json(jobs);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error while searching jobs' });
+    }
+};

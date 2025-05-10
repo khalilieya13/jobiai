@@ -1,7 +1,10 @@
 import axios from 'axios';
 import React, { useState } from 'react';
 import { Phone, Mail, Download, User, Briefcase, GraduationCap, Award, Globe, Heart, Languages } from 'lucide-react';
-
+import { useEffect } from 'react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
+import CVPreview from "../../components/CVPreview.tsx";
 const languageLevels = [
   'Native',
   'Fluent',
@@ -57,7 +60,9 @@ interface CVData {
 }
 
  export function CVBuilder() {
-  const [cvData, setCVData] = useState<CVData>({
+   const [cvData, setCVData] = useState<CVData>({
+    _id: "temp-id", // ou un uuid, ou vide
+    createdBy: "current-user-id",
     personalInfo: {
       fullName: '',
       title: '',
@@ -103,8 +108,48 @@ interface CVData {
     }]
   });
 
+   const handleExportPDF = async () => {
+     const element = document.getElementById('cv-content');
+     if (!element) return;
 
-  const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+     const canvas = await html2canvas(element);
+     const imgData = canvas.toDataURL('image/png');
+
+     const pdf = new jsPDF('p', 'mm', 'a4');
+     const imgProps = pdf.getImageProperties(imgData);
+     const pdfWidth = pdf.internal.pageSize.getWidth();
+     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+
+     pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+     pdf.save('mon_cv.pdf');
+   };
+
+  const [resumeId, setResumeId] = useState<string | null>(null);
+   useEffect(() => {
+     const fetchResume = async () => {
+       try {
+         const token = localStorage.getItem('token');
+         const res = await axios.get('http://localhost:5000/jobiai/api/resume/', {
+           headers: {
+             Authorization: `Bearer ${token}`
+           }
+         });
+
+         if (res.data) {
+           setCVData(res.data);
+           setResumeId(res.data._id); // on garde l'id si on veut faire un PUT plus tard
+         }
+       } catch (err) {
+         console.log("Aucun CV existant ou erreur :", err);
+       }
+     };
+
+     fetchResume();
+   }, []);
+
+
+
+   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setCVData(prev => ({
       ...prev,
@@ -119,36 +164,66 @@ interface CVData {
    const handleSubmit = async () => {
      try {
        const token = localStorage.getItem('token');
-       const response = await axios.post(API_URL, cvData, {
-         headers: {
-           Authorization: `Bearer ${TOKEN}`,
-           'Content-Type': 'application/json'
-         }
-       });
-       console.log('CV soumis avec succès:', response.data);
-       alert('CV soumis avec succès!');
+
+       if (resumeId) {
+         // Mise à jour
+         const res = await axios.put(`http://localhost:5000/jobiai/api/resume/${resumeId}`, cvData, {
+           headers: {
+             Authorization: `Bearer ${token}`,
+             'Content-Type': 'application/json'
+           }
+         });
+         console.log('CV mis à jour avec succès:', res.data);
+         alert('CV mis à jour avec succès !');
+       } else {
+         // Création
+         const res = await axios.post('http://localhost:5000/jobiai/api/resume/add', cvData, {
+           headers: {
+             Authorization: `Bearer ${token}`,
+             'Content-Type': 'application/json'
+           }
+         });
+         console.log('CV soumis avec succès:', res.data);
+         alert('CV soumis avec succès !');
+         setResumeId(res.data._id); // Pour passer en mode "update" ensuite
+       }
+
      } catch (error) {
        console.error("Erreur lors de l'envoi du CV:", error);
        alert("Erreur lors de l'envoi du CV");
      }
    };
-  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const importedData = JSON.parse(e.target?.result as string);
-          setCVData(importedData);
-        } catch (error) {
-          alert('Invalid CV file format');
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
 
-  const addEducation = () => {
+   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+     const file = e.target.files?.[0];
+     if (!file) return;
+
+     const reader = new FileReader();
+     reader.onload = (event) => {
+       try {
+         const importedData = JSON.parse(event.target?.result as string);
+
+         // Validate the imported data structure
+         if (!importedData.personalInfo || !Array.isArray(importedData.education)) {
+           throw new Error('Invalid CV data format');
+         }
+
+         setCVData(importedData);
+       } catch (error) {
+         console.error('Error parsing CV data:', error);
+         alert('Failed to import CV: Invalid file format');
+       }
+     };
+
+     reader.onerror = () => {
+       alert('Failed to read file');
+     };
+
+     reader.readAsText(file);
+   };
+
+
+   const addEducation = () => {
     setCVData(prev => ({
       ...prev,
       education: [...prev.education, {
@@ -232,24 +307,34 @@ interface CVData {
                 />
                 Import CV
               </label>
-              <button className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+              <button
+                  onClick={handleExportPDF}
+                  className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
                 <Download className="h-5 w-5 mr-2"/>
                 Export CV
               </button>
+
+
               <button className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
                       onClick={handleSubmit}>
                 Save CV
               </button>
+
+
+
             </div>
+
           </div>
+
 
           <div className="grid grid-cols-12 gap-8">
             {/* Form Section */}
-            <div className="col-span-8 space-y-6">
+            <div className="col-span-12 lg:col-span-6 space-y-6">
               {/* Personal Information */}
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl font-semibold mb-4 flex items-center">
-                  <User className="h-5 w-5 mr-2" />
+                  <User className="h-5 w-5 mr-2"/>
                   Personal Information
                 </h2>
                 <div className="grid grid-cols-2 gap-4">
@@ -277,7 +362,7 @@ interface CVData {
                     <label className="block text-sm font-medium text-gray-700">Email</label>
                     <div className="mt-1 relative rounded-md shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-gray-400" />
+                        <Mail className="h-5 w-5 text-gray-400"/>
                       </div>
                       <input
                           type="email"
@@ -292,7 +377,7 @@ interface CVData {
                     <label className="block text-sm font-medium text-gray-700">Phone</label>
                     <div className="mt-1 relative rounded-md shadow-sm">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <Phone className="h-5 w-5 text-gray-400" />
+                        <Phone className="h-5 w-5 text-gray-400"/>
                       </div>
                       <input
                           type="tel"
@@ -320,7 +405,7 @@ interface CVData {
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold flex items-center">
-                    <GraduationCap className="h-5 w-5 mr-2" />
+                    <GraduationCap className="h-5 w-5 mr-2"/>
                     Education & Training
                   </h2>
                   <button
@@ -341,7 +426,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newEducation = [...cvData.education];
                                 newEducation[index].title = e.target.value;
-                                setCVData({ ...cvData, education: newEducation });
+                                setCVData({...cvData, education: newEducation});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -353,7 +438,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newEducation = [...cvData.education];
                                 newEducation[index].type = e.target.value as 'diploma' | 'training';
-                                setCVData({ ...cvData, education: newEducation });
+                                setCVData({...cvData, education: newEducation});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           >
@@ -369,7 +454,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newEducation = [...cvData.education];
                                 newEducation[index].institution = e.target.value;
-                                setCVData({ ...cvData, education: newEducation });
+                                setCVData({...cvData, education: newEducation});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -382,7 +467,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newEducation = [...cvData.education];
                                 newEducation[index].startYear = e.target.value;
-                                setCVData({ ...cvData, education: newEducation });
+                                setCVData({...cvData, education: newEducation});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -395,7 +480,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newEducation = [...cvData.education];
                                 newEducation[index].endYear = e.target.value;
-                                setCVData({ ...cvData, education: newEducation });
+                                setCVData({...cvData, education: newEducation});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -408,7 +493,7 @@ interface CVData {
                             onChange={(e) => {
                               const newEducation = [...cvData.education];
                               newEducation[index].description = e.target.value;
-                              setCVData({ ...cvData, education: newEducation });
+                              setCVData({...cvData, education: newEducation});
                             }}
                             rows={3}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -422,7 +507,7 @@ interface CVData {
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold flex items-center">
-                    <Award className="h-5 w-5 mr-2" />
+                    <Award className="h-5 w-5 mr-2"/>
                     Skills
                   </h2>
                   <button
@@ -441,7 +526,7 @@ interface CVData {
                             onChange={(e) => {
                               const newSkills = [...cvData.skills];
                               newSkills[index].name = e.target.value;
-                              setCVData({ ...cvData, skills: newSkills });
+                              setCVData({...cvData, skills: newSkills});
                             }}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             placeholder="Skill name"
@@ -456,7 +541,7 @@ interface CVData {
                             onChange={(e) => {
                               const newSkills = [...cvData.skills];
                               newSkills[index].level = parseInt(e.target.value);
-                              setCVData({ ...cvData, skills: newSkills });
+                              setCVData({...cvData, skills: newSkills});
                             }}
                             className="mt-1 block w-full"
                         />
@@ -472,7 +557,7 @@ interface CVData {
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold flex items-center">
-                    <Award className="h-5 w-5 mr-2" />
+                    <Award className="h-5 w-5 mr-2"/>
                     Accreditations
                   </h2>
                   <button
@@ -493,7 +578,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newAccreditations = [...cvData.accreditations];
                                 newAccreditations[index].title = e.target.value;
-                                setCVData({ ...cvData, accreditations: newAccreditations });
+                                setCVData({...cvData, accreditations: newAccreditations});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -506,7 +591,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newAccreditations = [...cvData.accreditations];
                                 newAccreditations[index].organization = e.target.value;
-                                setCVData({ ...cvData, accreditations: newAccreditations });
+                                setCVData({...cvData, accreditations: newAccreditations});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -519,7 +604,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newAccreditations = [...cvData.accreditations];
                                 newAccreditations[index].year = e.target.value;
-                                setCVData({ ...cvData, accreditations: newAccreditations });
+                                setCVData({...cvData, accreditations: newAccreditations});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -532,7 +617,7 @@ interface CVData {
                             onChange={(e) => {
                               const newAccreditations = [...cvData.accreditations];
                               newAccreditations[index].description = e.target.value;
-                              setCVData({ ...cvData, accreditations: newAccreditations });
+                              setCVData({...cvData, accreditations: newAccreditations});
                             }}
                             rows={2}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -546,7 +631,7 @@ interface CVData {
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold flex items-center">
-                    <Briefcase className="h-5 w-5 mr-2" />
+                    <Briefcase className="h-5 w-5 mr-2"/>
                     Work Experience
                   </h2>
                   <button
@@ -567,7 +652,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newExperience = [...cvData.experience];
                                 newExperience[index].company = e.target.value;
-                                setCVData({ ...cvData, experience: newExperience });
+                                setCVData({...cvData, experience: newExperience});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -580,7 +665,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newExperience = [...cvData.experience];
                                 newExperience[index].position = e.target.value;
-                                setCVData({ ...cvData, experience: newExperience });
+                                setCVData({...cvData, experience: newExperience});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -593,7 +678,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newExperience = [...cvData.experience];
                                 newExperience[index].startYear = e.target.value;
-                                setCVData({ ...cvData, experience: newExperience });
+                                setCVData({...cvData, experience: newExperience});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -606,7 +691,7 @@ interface CVData {
                               onChange={(e) => {
                                 const newExperience = [...cvData.experience];
                                 newExperience[index].endYear = e.target.value;
-                                setCVData({ ...cvData, experience: newExperience });
+                                setCVData({...cvData, experience: newExperience});
                               }}
                               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                           />
@@ -619,7 +704,7 @@ interface CVData {
                             onChange={(e) => {
                               const newExperience = [...cvData.experience];
                               newExperience[index].description = e.target.value;
-                              setCVData({ ...cvData, experience: newExperience });
+                              setCVData({...cvData, experience: newExperience});
                             }}
                             rows={3}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -633,7 +718,7 @@ interface CVData {
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold flex items-center">
-                    <Languages className="h-5 w-5 mr-2" />
+                    <Languages className="h-5 w-5 mr-2"/>
                     Languages
                   </h2>
                   <button
@@ -652,7 +737,7 @@ interface CVData {
                             onChange={(e) => {
                               const newLanguages = [...cvData.languages];
                               newLanguages[index].language = e.target.value;
-                              setCVData({ ...cvData, languages: newLanguages });
+                              setCVData({...cvData, languages: newLanguages});
                             }}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             placeholder="Language"
@@ -664,7 +749,7 @@ interface CVData {
                             onChange={(e) => {
                               const newLanguages = [...cvData.languages];
                               newLanguages[index].proficiency = e.target.value;
-                              setCVData({ ...cvData, languages: newLanguages });
+                              setCVData({...cvData, languages: newLanguages});
                             }}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                         >
@@ -683,7 +768,7 @@ interface CVData {
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold flex items-center">
-                    <Heart className="h-5 w-5 mr-2" />
+                    <Heart className="h-5 w-5 mr-2"/>
                     Interests
                   </h2>
                   <button
@@ -702,7 +787,7 @@ interface CVData {
                             onChange={(e) => {
                               const newInterests = [...cvData.interests];
                               newInterests[index] = e.target.value;
-                              setCVData({ ...cvData, interests: newInterests });
+                              setCVData({...cvData, interests: newInterests});
                             }}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             placeholder="Enter an interest"
@@ -716,7 +801,7 @@ interface CVData {
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold flex items-center">
-                    <Globe className="h-5 w-5 mr-2" />
+                    <Globe className="h-5 w-5 mr-2"/>
                     Links
                   </h2>
                   <button
@@ -735,7 +820,7 @@ interface CVData {
                             onChange={(e) => {
                               const newLinks = [...cvData.links];
                               newLinks[index].title = e.target.value;
-                              setCVData({ ...cvData, links: newLinks });
+                              setCVData({...cvData, links: newLinks});
                             }}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             placeholder="Link Title"
@@ -748,7 +833,7 @@ interface CVData {
                             onChange={(e) => {
                               const newLinks = [...cvData.links];
                               newLinks[index].url = e.target.value;
-                              setCVData({ ...cvData, links: newLinks });
+                              setCVData({...cvData, links: newLinks});
                             }}
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                             placeholder="URL"
@@ -758,9 +843,18 @@ interface CVData {
                 ))}
               </div>
             </div>
+            {/* CV Preview Section */}
+            <div className="col-span-6">
+              <div
+                  className="border border-gray-300 shadow-lg rounded-lg bg-white p-6 sticky top-6 max-h-screen overflow-y-auto">
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">Aperçu du CV</h2>
+                <CVPreview data={cvData}/>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
   );
-}
+ }
 

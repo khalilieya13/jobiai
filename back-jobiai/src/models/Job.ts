@@ -14,8 +14,9 @@ export interface IJob extends Document {
     requiredSkills: string[];
     jobDescription: string;
     idCompany: mongoose.Schema.Types.ObjectId; // Référence vers Company
-    createdAt?: Date; // Ajouté automatiquement
-    updatedAt?: Date; // (optionnel mais généré aussi)
+    status: "Active" | "Paused" | "Closed"; // <-- Ajouté ici
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 const JobSchema = new mongoose.Schema<IJob>(
@@ -32,9 +33,14 @@ const JobSchema = new mongoose.Schema<IJob>(
         },
         requiredSkills: { type: [String], required: true },
         jobDescription: { type: String, required: true },
-        idCompany: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true }
+        idCompany: { type: mongoose.Schema.Types.ObjectId, ref: "Company", required: true },
+        status: {
+            type: String,
+            enum: ["Active", "Paused", "Closed"],
+            default: "Active" // <-- Valeur par défaut
+        }
     },
-    { timestamps: true } // <-- Active createdAt et updatedAt automatiquement
+    { timestamps: true }
 );
 
 export default mongoose.model<IJob>("Job", JobSchema);

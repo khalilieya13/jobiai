@@ -24,6 +24,7 @@ export function CandidateProfileEdition() {
     phone: '',
     address: '',
     bio: '',
+    experienceYears: '',
     skills: [] as string[],
     notifications: defaultNotifications,
     language: 'en',
@@ -49,7 +50,8 @@ export function CandidateProfileEdition() {
               ...defaultNotifications,
               ...(response.data.notifications || {})
             },
-            skills: response.data.skills || []
+            skills: response.data.skills || [],
+            experienceYears: response.data.experienceYears || ''
           });
           setCandidateId(response.data._id);
         }
@@ -81,6 +83,7 @@ export function CandidateProfileEdition() {
         phone: profile.phone,
         address: profile.address,
         bio: profile.bio,
+        experienceYears: profile.experienceYears,
         skills: profile.skills,
         notifications: profile.notifications
       };
@@ -171,6 +174,21 @@ export function CandidateProfileEdition() {
                           value={profile.fullName}
                           onChange={(e) => setProfile({ ...profile, fullName: e.target.value })}
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Years of Experience
+                      </label>
+                      <input
+                          type="number"
+                          min="0"
+                          max="50"
+                          value={profile.experienceYears}
+                          onChange={(e) => setProfile({ ...profile, experienceYears: e.target.value })}
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                          placeholder="e.g. 5"
                       />
                     </div>
 

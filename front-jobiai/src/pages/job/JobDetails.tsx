@@ -6,6 +6,7 @@ import {
     Building2, Globe, Users, Mail, Phone, Building
 } from 'lucide-react';
 
+
 interface CompanyData {
     name: string;
     logo: string;
@@ -21,6 +22,7 @@ interface CompanyData {
 }
 
 interface JobData {
+    _id: string;
     jobTitle: string;
     department: string;
     location: string;
@@ -42,6 +44,12 @@ export function JobDetails() {
     const [job, setJob] = useState<JobData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [jobToDelete, setJobToDelete] = useState<JobData | null>(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [jobToApply, setJobToApply] = useState<JobData | null>(null);
+    const [showApplyModal, setShowApplyModal] = useState(false);
+   // const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
 
     useEffect(() => {
         const fetchJobDetails = async () => {
@@ -67,7 +75,8 @@ export function JobDetails() {
     }, [id]);
 
     const handleDelete = async () => {
-        if (window.confirm('Are you sure you want to delete this job post?')) {
+        if(!jobToDelete)
+            return
             try {
                 const token = localStorage.getItem('token');
                 await axios.delete(
@@ -82,8 +91,36 @@ export function JobDetails() {
             } catch (err) {
                 setError('Failed to delete job');
             }
-        }
+
     };
+    /*const handleApply = async () => {
+        if(!jobToApply)
+            return
+        let response;
+            try {
+                const token = localStorage.getItem('token');
+                 response=await axios.post(
+                    `http://localhost:5000/jobiai/api/candidacy/apply`,{
+                        "jobPost": id
+                    },
+
+                {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
+                );
+                //navigate('/'); // Navigate to jobs list after deletion
+                if (response.status === 200) {
+                    setSuccessMessage('candidacy applied  successfully!');
+                }
+            } catch (err:any ) {
+                const errorMsg =
+                    err.response?.data?.message || err.response?.data || 'Failed to apply to job';
+                setError(`Failed to apply to job: ${errorMsg}`);
+            }
+
+    };*/
 
     if (isLoading) {
         return (
@@ -108,6 +145,8 @@ export function JobDetails() {
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+
                     {/* Main Content - Job Details */}
                     <div className="lg:col-span-2">
                         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
@@ -123,15 +162,28 @@ export function JobDetails() {
                                             onClick={() => navigate(`/job/edition/${id}`)}
                                             className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
                                         >
-                                            <PenSquare className="w-4 h-4 mr-2" />
+                                            <PenSquare className="w-4 h-4 mr-2"/>
                                             Edit
                                         </button>
                                         <button
-                                            onClick={handleDelete}
+                                            onClick={() => {
+                                            setJobToDelete(job);
+                                            setShowDeleteModal(true);
+                                        }}
                                             className="flex items-center px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
                                         >
-                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            <Trash2 className="w-4 h-4 mr-2"/>
                                             Delete
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setJobToApply(job);
+                                                setShowApplyModal(true);
+                                            }}
+                                            className="flex items-center px-4 py-2 bg-white text-indigo-600 rounded-md hover:bg-indigo-50 transition-colors"
+                                        >
+                                            <PenSquare className="w-4 h-4 mr-2"/>
+                                            Apply now
                                         </button>
                                     </div>
                                 </div>
@@ -141,7 +193,7 @@ export function JobDetails() {
                             <div className="px-6 py-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                     <div className="flex items-center">
-                                        <MapPin className="w-5 h-5 text-gray-400 mr-3" />
+                                        <MapPin className="w-5 h-5 text-gray-400 mr-3"/>
                                         <div>
                                             <p className="text-sm text-gray-500">Location</p>
                                             <p className="font-medium text-gray-900">{job.location}</p>
@@ -270,6 +322,66 @@ export function JobDetails() {
                     </div>
                 </div>
             </div>
+            {showDeleteModal && jobToDelete && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Are you sure?</h2>
+                        <p className="text-gray-600 mb-6">
+                            Do you really want to delete the job application
+                        </p>
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false);
+                                    setJobToDelete(null);
+                                }}
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showApplyModal && jobToApply && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+                    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+                        <h2 className="text-lg font-semibold text-gray-800 mb-4">Test Required</h2>
+                        <p className="text-gray-600 mb-6">
+                            To apply for this job, you must complete the required test first.
+                        </p>
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={() => {
+                                    setShowApplyModal(false);
+                                    setJobToApply(null);
+                                }}
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowApplyModal(false);
+                                    setJobToApply(null);
+                                    navigate(`/test/taker/${jobToApply._id}`); // ou jobToApply.jobPostId si c’est différent
+                                }}
+                                className="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                            >
+                                Take the Test Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

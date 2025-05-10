@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 
 export function UpdateJobPost() {
-    const { id } = useParams(); // Get the job ID from URL parameters
+    const { id } = useParams();
 
     const [formData, setFormData] = useState({
         jobTitle: '',
@@ -16,14 +16,14 @@ export function UpdateJobPost() {
         salaryRange: { min: '', max: '' },
         requiredSkills: [] as string[],
         currentSkill: '',
-        jobDescription: ''
+        jobDescription: '',
+        status: 'Active' // Added status field with default value
     });
 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch existing job data
     useEffect(() => {
         const fetchJobData = async () => {
             try {
@@ -178,7 +178,7 @@ export function UpdateJobPost() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label htmlFor="type" className="block text-sm font-medium text-gray-700">
                                     Employment Type
@@ -187,7 +187,7 @@ export function UpdateJobPost() {
                                     id="type"
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                     value={formData.employmentType}
-                                    onChange={e => setFormData(prev => ({ ...prev, employmentType: e.target.value }))}
+                                    onChange={e => setFormData(prev => ({...prev, employmentType: e.target.value}))}
                                 >
                                     <option value="full-time">Full Time</option>
                                     <option value="part-time">Part Time</option>
@@ -201,14 +201,34 @@ export function UpdateJobPost() {
                                 <label htmlFor="experience" className="block text-sm font-medium text-gray-700">
                                     Experience Level
                                 </label>
-                                <input
-                                    type="text"
+                                <select
                                     id="experience"
                                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                    placeholder="e.g., 3-5 years"
                                     value={formData.experienceLevel}
-                                    onChange={e => setFormData(prev => ({ ...prev, experienceLevel: e.target.value }))}
-                                />
+                                    onChange={e => setFormData(prev => ({...prev, experienceLevel: e.target.value}))}
+                                >
+                                    <option value="">Select Experience Level</option>
+                                    <option value="Entry Level">Entry Level</option>
+                                    <option value="Mid Level">Mid Level</option>
+                                    <option value="Senior Level">Senior Level</option>
+                                    <option value="Executive">Executive</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                                    Status
+                                </label>
+                                <select
+                                    id="status"
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    value={formData.status}
+                                    onChange={e => setFormData(prev => ({...prev, status: e.target.value}))}
+                                >
+                                    <option value="Active">Active</option>
+                                    <option value="Paused">Paused</option>
+                                    <option value="Closed">Closed</option>
+                                </select>
                             </div>
                         </div>
 
@@ -270,15 +290,15 @@ export function UpdateJobPost() {
                                     key={index}
                                     className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800"
                                 >
-                  {skill}
+                                    {skill}
                                     <button
                                         type="button"
                                         className="ml-2 inline-flex items-center"
                                         onClick={() => handleSkillRemove(skill)}
                                     >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </span>
                             ))}
                         </div>
                     </div>
@@ -307,3 +327,4 @@ export function UpdateJobPost() {
         </div>
     );
 }
+

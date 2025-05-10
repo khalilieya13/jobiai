@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import axios from 'axios'; // Import axios
+import { useState, useRef } from 'react';
+import axios from 'axios';
 import { X } from 'lucide-react';
+import { useNavigate } from "react-router-dom";
 
 export function JobPost() {
   const [formData, setFormData] = useState({
@@ -13,11 +14,16 @@ export function JobPost() {
     salaryRange: { min: '', max: '' },
     requiredSkills: [] as string[],
     currentSkill: '',
-    jobDescription: ''
+    jobDescription: '',
+    status: 'Active'
   });
 
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // To handle error message
-  const [successMessage, setSuccessMessage] = useState<string | null>(null); // To handle success message
+  const [showTestPopup, setShowTestPopup] = useState(false);
+
+  const createdJobIdRef = useRef<string | null>(null); // <- Ref to ensure correct ID
+
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   // Handle skill add
   const handleSkillAdd = () => {
@@ -42,34 +48,42 @@ export function JobPost() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validation for required fields
-    if (!formData.jobTitle || !formData.department || !formData.location || !formData.experienceLevel || !formData.salaryRange.min || !formData.salaryRange.max || !formData.jobDescription) {
+    // Validation
+    if (
+        !formData.jobTitle ||
+        !formData.department ||
+        !formData.location ||
+        !formData.experienceLevel ||
+        !formData.salaryRange.min ||
+        !formData.salaryRange.max ||
+        !formData.jobDescription ||
+        !formData.workMode
+    ) {
       setErrorMessage("All fields are required.");
-      return; // Prevent form submission if validation fails
+      return;
     }
 
-    setErrorMessage(null); // Clear error message on valid form
+    setErrorMessage(null);
 
-    // Prepare data for API
-    const jobData = {
-      ...formData,
-      jobDescription: formData.jobDescription, // Use job description directly (no editor)
-    };
+    const jobData = { ...formData };
 
     try {
-      const token = localStorage.getItem('token'); // Ensure token is in localStorage
+      const token = localStorage.getItem('token');
       const response = await axios.post(
           'http://localhost:5000/jobiai/api/job/add',
           jobData,
           {
-            headers: {
-              Authorization: `Bearer ${token}`, // Add token to Authorization header
-            },
+            headers: { Authorization: `Bearer ${token}` }
           }
       );
 
       if (response.status === 201) {
-        setSuccessMessage('Job posted successfully!');
+        const createdJob = response.data.job;
+        console.log("Created Job Response:", createdJob); // Debug API response
+        if (createdJob._id) {
+          createdJobIdRef.current = createdJob._id; // Assign job ID to ref
+        }
+
         setFormData({
           jobTitle: '',
           department: '',
@@ -80,8 +94,11 @@ export function JobPost() {
           salaryRange: { min: '', max: '' },
           requiredSkills: [],
           currentSkill: '',
-          jobDescription: ''
+          jobDescription: '',
+          status: 'Active'
         });
+
+        setShowTestPopup(true);
       }
     } catch (error) {
       console.error('Error posting the job:', error);
@@ -89,10 +106,24 @@ export function JobPost() {
     }
   };
 
+  const handleAddTest = () => {
+    console.log("clicked YES", createdJobIdRef.current); // Debug job ID here
+    if (createdJobIdRef.current) {
+      navigate(`/test/create/${createdJobIdRef.current}`);
+    } else {
+      console.error("Job ID is undefined when trying to navigate");
+    }
+  };
+
+  const handleClosePopup = () => {
+    setShowTestPopup(false);
+  };
+
+
   return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex justify-between items-center mb-6">
+          {/*<div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Post a New Job</h1>
             <div className="flex gap-4">
               <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50">
@@ -102,7 +133,7 @@ export function JobPost() {
                 Publish Job
               </button>
             </div>
-          </div>
+          </div>*/}
 
           {/* Error message */}
           {errorMessage && (
@@ -111,12 +142,7 @@ export function JobPost() {
               </div>
           )}
 
-          {/* Success message */}
-          {successMessage && (
-              <div className="bg-green-100 text-green-800 p-4 rounded-md mb-6">
-                <span>{successMessage}</span>
-              </div>
-          )}
+
 
           {/* Form */}
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -134,7 +160,7 @@ export function JobPost() {
                     id="title"
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     value={formData.jobTitle}
-                    onChange={e => setFormData(prev => ({ ...prev, jobTitle: e.target.value }))}
+                    onChange={e => setFormData(prev => ({...prev, jobTitle: e.target.value}))}
                 />
               </div>
 
@@ -149,7 +175,7 @@ export function JobPost() {
                       id="department"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                       value={formData.department}
-                      onChange={e => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                      onChange={e => setFormData(prev => ({...prev, department: e.target.value}))}
                   />
                 </div>
                 <div>
@@ -161,12 +187,28 @@ export function JobPost() {
                       id="location"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                       value={formData.location}
-                      onChange={e => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                      onChange={e => setFormData(prev => ({...prev, location: e.target.value}))}
                   />
                 </div>
               </div>
 
               {/* Employment Type, Experience Level */}
+              <div>
+                <label htmlFor="workMode" className="block text-sm font-medium text-gray-700">
+                  Work Mode
+                </label>
+                <select
+                    id="workMode"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                    value={formData.workMode}
+                    onChange={e => setFormData(prev => ({...prev, workMode: e.target.value}))}
+                >
+                  <option value="on site">On Site</option>
+                  <option value="remote">Remote</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="type" className="block text-sm font-medium text-gray-700">
@@ -176,7 +218,7 @@ export function JobPost() {
                       id="type"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                       value={formData.employmentType}
-                      onChange={e => setFormData(prev => ({ ...prev, employmentType: e.target.value }))}
+                      onChange={e => setFormData(prev => ({...prev, employmentType: e.target.value}))}
                   >
                     <option value="full-time">Full Time</option>
                     <option value="part-time">Part Time</option>
@@ -190,15 +232,20 @@ export function JobPost() {
                   <label htmlFor="experience" className="block text-sm font-medium text-gray-700">
                     Experience Level
                   </label>
-                  <input
-                      type="text"
+                  <select
                       id="experience"
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="e.g., 3-5 years"
                       value={formData.experienceLevel}
-                      onChange={e => setFormData(prev => ({ ...prev, experienceLevel: e.target.value }))}
-                  />
+                      onChange={e => setFormData(prev => ({...prev, experienceLevel: e.target.value}))}
+                  >
+                    <option value="">Select Experience Level</option>
+                    <option value="Entry Level">Entry Level</option>
+                    <option value="Mid Level">Mid Level</option>
+                    <option value="Senior Level">Senior Level</option>
+                    <option value="Executive">Executive</option>
+                  </select>
                 </div>
+
               </div>
 
               {/* Salary Range */}
@@ -215,7 +262,7 @@ export function JobPost() {
                         value={formData.salaryRange.min}
                         onChange={e => setFormData(prev => ({
                           ...prev,
-                          salaryRange: { ...prev.salaryRange, min: e.target.value }
+                          salaryRange: {...prev.salaryRange, min: e.target.value}
                         }))}
                     />
                   </div>
@@ -227,7 +274,7 @@ export function JobPost() {
                         value={formData.salaryRange.max}
                         onChange={e => setFormData(prev => ({
                           ...prev,
-                          salaryRange: { ...prev.salaryRange, max: e.target.value }
+                          salaryRange: {...prev.salaryRange, max: e.target.value}
                         }))}
                     />
                   </div>
@@ -244,7 +291,7 @@ export function JobPost() {
                     className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     placeholder="Add a skill"
                     value={formData.currentSkill}
-                    onChange={e => setFormData(prev => ({ ...prev, currentSkill: e.target.value }))}
+                    onChange={e => setFormData(prev => ({...prev, currentSkill: e.target.value}))}
                     onKeyPress={e => e.key === 'Enter' && handleSkillAdd()}
                 />
                 <button
@@ -267,11 +314,27 @@ export function JobPost() {
                           className="ml-2 inline-flex items-center"
                           onClick={() => handleSkillRemove(skill)}
                       >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4"/>
                   </button>
                 </span>
                 ))}
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700">
+                Status
+              </label>
+              <select
+                  id="status"
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  value={formData.status}
+                  onChange={e => setFormData(prev => ({...prev, status: e.target.value}))}
+              >
+                <option value="Active">Active</option>
+                <option value="Paused">Paused</option>
+                <option value="Closed">Closed</option>
+              </select>
             </div>
 
             {/* Job Description */}
@@ -280,7 +343,7 @@ export function JobPost() {
               <textarea
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                   value={formData.jobDescription}
-                  onChange={e => setFormData(prev => ({ ...prev, jobDescription: e.target.value }))}
+                  onChange={e => setFormData(prev => ({...prev, jobDescription: e.target.value}))}
                   placeholder="Enter job description..."
                   rows={4}
               />
@@ -294,9 +357,34 @@ export function JobPost() {
               >
                 Post Job
               </button>
+
             </div>
           </form>
         </div>
+        {/* Success Popup */}
+        {showTestPopup && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-xl shadow-xl w-96 text-center">
+                <h2 className="text-xl font-semibold text-green-600 mb-4">Job posted successfully!</h2>
+                <p className="mb-6">Would you like to add a test to this job?</p>
+                <div className="flex justify-center gap-4">
+                  <button
+                      onClick={handleAddTest}
+                      className="px-4 py-2 bg-yellow-400 text-black rounded-lg hover:bg-yellow-500"
+                  >
+                    Yes
+                  </button>
+                  <button
+                      onClick={handleClosePopup}
+                      className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
       </div>
   );
 }
+

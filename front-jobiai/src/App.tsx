@@ -1,11 +1,14 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer.tsx';
+import { RequireAuth } from "./components/RequireAuth.tsx";
+
 import { Home } from './pages/Home';
 import { Login } from './pages/Authentication/Login.tsx';
 import { Register } from './pages/Authentication/Register.tsx';
-import { JobSearch } from './pages/JobSearch';
+import { JobSearch } from './pages/job/JobSearch.tsx';
 import { CVBuilder } from './pages/candidate/CVBuilder.tsx';
-import { CandidateDashboard } from './pages/CandidateDashboard';
+import { CandidateDashboard } from './pages/candidate/CandidateDashboard.tsx';
 import { CompanyDashboard } from './pages/company/CompanyDashboard.tsx';
 import { SkillAssessment } from './pages/SkillAssessment';
 import { JobPost } from './pages/job/JobPost.tsx';
@@ -16,6 +19,11 @@ import { CompanyProfileCreation } from "./pages/company/CompanyProfileCreation.t
 import { CompanyProfileEdition } from "./pages/company/CompanyProfileEdition.tsx";
 import {JobDetails} from "./pages/job/JobDetails.tsx";
 import {CandidateList} from "./pages/company/CompanyCandidateList.tsx";
+import {CandidateSearch} from "./pages/candidate/candidateSearch.tsx";
+import {TestCreation} from "./pages/job/TestCreation.tsx";
+import {TestResponse} from "./pages/candidate/TestResponse.tsx";
+import {Profile} from "./pages/Authentication/Profile.tsx";
+
 
 
 function App() {
@@ -27,25 +35,33 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/account" element={<Profile />} />
 
-          <Route path="/company/profile/creation" element={<CompanyProfileCreation />} />
-          <Route path="/company/profile/edition" element={<CompanyProfileEdition />} />
-          <Route path="/company/profile" element={<CompanyProfile />} />
-          <Route path="/company/dashboard" element={<CompanyDashboard />} />
-          <Route path="/company/candidate/list" element={<CandidateList />} />
+          <Route path="/company/profile/creation" element={ <RequireAuth><CompanyProfileCreation /></RequireAuth>} />
+          <Route path="/company/profile/edition" element={<RequireAuth><CompanyProfileEdition /></RequireAuth>} />
+          <Route path="/company/profile" element={<RequireAuth><CompanyProfile /></RequireAuth>} />
+          <Route path="/company/dashboard" element={<RequireAuth><CompanyDashboard/></RequireAuth>} />
+          <Route path="/company/candidate/list/:id" element={<RequireAuth><CandidateList /></RequireAuth>} />
 
-          <Route path="/job/post" element={<JobPost />} />
-          <Route path="/job/edition/:id" element={<UpdateJobPost />} />
-          <Route path="/job/:id" element={<JobDetails />} />
+          <Route path="/job/post" element={<RequireAuth><JobPost /></RequireAuth>} />
+          <Route path="/job/edition/:id" element={<RequireAuth><UpdateJobPost /></RequireAuth>} />
+          <Route path="/job/:id" element={<RequireAuth><JobDetails /></RequireAuth>} />
+          <Route path="/test/create/:jobId" element={<RequireAuth><TestCreation /></RequireAuth>} />
+
 
           <Route path="/jobs" element={<JobSearch />} />
-          <Route path="/cv-builder" element={<CVBuilder />} />
-          <Route path="/candidate/dashboard" element={<CandidateDashboard />} />
-          <Route path="/skills-assessment" element={<SkillAssessment />} />
+          <Route path="/candidates" element={<RequireAuth><CandidateSearch /></RequireAuth>} />
 
-          <Route path="/candidate/profile/edition" element={<CandidateProfileEdition />} />
+          <Route path="/cv-builder" element={<RequireAuth><CVBuilder /></RequireAuth>} />
+          <Route path="/candidate/dashboard" element={<RequireAuth><CandidateDashboard /></RequireAuth>} />
+          <Route path="/skills-assessment" element={<RequireAuth><SkillAssessment /></RequireAuth>} />
+
+          <Route path="/candidate/profile/edition" element={<RequireAuth><CandidateProfileEdition /></RequireAuth>} />
+          <Route path="/test/taker/:jobPostId" element={<RequireAuth><TestResponse /></RequireAuth>} />
+
 
         </Routes>
+        <Footer />
       </div>
     </Router>
   );

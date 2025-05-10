@@ -8,6 +8,9 @@ import jobRoutes from "./routes/jobRoutes";
 import candidateRoutes from "./routes/candidateRoutes";
 import resumeRoutes from "./routes/resumeRoutes";
 import candidacyRoutes from "./routes/candidacyRoutes";
+import quizRoutes from "./routes/quizRoutes";
+import dashboardRoutes from "./routes/dashboardRoutes";
+
 
 dotenv.config();
 connectDB();
@@ -22,6 +25,11 @@ app.use("/jobiai/api/job", jobRoutes);
 app.use("/jobiai/api/candidate", candidateRoutes);
 app.use("/jobiai/api/resume", resumeRoutes);
 app.use("/jobiai/api/candidacy", candidacyRoutes);
+app.use("/jobiai/api/quiz", quizRoutes);
+app.use("/jobiai/api/dashboard", dashboardRoutes);
+
+
+
 
 
 const PORT = process.env.PORT || 5000;

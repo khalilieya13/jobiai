@@ -21,4 +21,6 @@ router.put("/:id", updateCandidacyStatus); // 🔹 Mettre à jour le statut d'un
 // @ts-ignore
 router.delete("/:id", deleteCandidacy); // 🔹 Supprimer une candidature
 
+
+
 export default router;

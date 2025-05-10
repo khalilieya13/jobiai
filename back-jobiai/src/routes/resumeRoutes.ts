@@ -6,7 +6,7 @@ import {
     getResumeById,
     updateResume,
     deleteResume,
-    getResumeByUser
+    getResumeByUser, searchResumes
 } from "../controllers/resumeController";
 
 const router = express.Router();
@@ -24,5 +24,7 @@ router.get("/:id", getResumeById); // 🔹 Récupérer un CV par ID
 router.put("/:id", updateResume); // 🔹 Mettre à jour un CV
 // @ts-ignore
 router.delete("/:id", deleteResume); // 🔹 Supprimer un CV
+
+router.get("/search", searchResumes);
 
 export default router;
