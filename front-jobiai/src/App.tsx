@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import {BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer.tsx';
 import { RequireAuth } from "./components/RequireAuth.tsx";
@@ -23,6 +23,7 @@ import {CandidateSearch} from "./pages/candidate/candidateSearch.tsx";
 import {TestCreation} from "./pages/job/TestCreation.tsx";
 import {TestResponse} from "./pages/candidate/TestResponse.tsx";
 import {Profile} from "./pages/Authentication/Profile.tsx";
+import {PasswordReset} from "./pages/Authentication/PasswordReset.tsx";
 
 
 
@@ -36,6 +37,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/account" element={<Profile />} />
+            <Route path="/reset-password" element={<PasswordReset />} />
+            <Route path="*" element={<Navigate to="/account" replace />} />
 
           <Route path="/company/profile/creation" element={ <RequireAuth><CompanyProfileCreation /></RequireAuth>} />
           <Route path="/company/profile/edition" element={<RequireAuth><CompanyProfileEdition /></RequireAuth>} />

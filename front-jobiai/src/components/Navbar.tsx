@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+import {Link, useLocation, useNavigate} from 'react-router-dom';
 import { Briefcase } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
@@ -16,20 +16,25 @@ export function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode<JwtPayload>(token);
-        setUser(decoded);
-      } catch (e) {
-        console.error('Invalid token');
-        setUser(null);
-      }
-    }
-  }, []);
+    const location = useLocation(); // 👈 track URL changes
 
-  const handleLogout = () => {
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const decoded = jwtDecode<JwtPayload>(token);
+                setUser(decoded);
+            } catch (e) {
+                console.error('Invalid token');
+                setUser(null);
+            }
+        } else {
+            setUser(null); // 👈 clear state if no token
+        }
+    }, [location]); // 👈 re-run when URL changes
+
+
+    const handleLogout = () => {
     localStorage.removeItem('token');
     setUser(null);
     navigate('/login');
@@ -91,29 +96,30 @@ export function Navbar() {
                   </div>
               ) : (
                   <div className="relative ml-4" ref={dropdownRef}>
-                    <button
-                        onClick={() => setDropdownOpen(!dropdownOpen)}
-                        className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm font-bold focus:outline-none"
-                    >
-                      {user.email?.charAt(0).toUpperCase()}
-                    </button>
+                      <button
+                          onClick={() => setDropdownOpen(!dropdownOpen)}
+                          className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg font-bold focus:outline-none"
+                      >
+                          {user.email?.charAt(0).toUpperCase()}
+                      </button>
 
-                    {dropdownOpen && (
-                        <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg py-1 z-50">
-                          <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                            Profile
-                          </Link>
-                          <Link to="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                            Settings
-                          </Link>
-                          <button
-                              onClick={handleLogout}
-                              className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                          >
-                            Log out
-                          </button>
-                        </div>
-                    )}
+
+                      {dropdownOpen && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg py-1 z-50">
+                              <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                  Profile
+                              </Link>
+                              <Link to="/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                  Settings
+                              </Link>
+                              <button
+                                  onClick={handleLogout}
+                                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                              >
+                                  Log out
+                              </button>
+                          </div>
+                      )}
                   </div>
               )}
             </div>

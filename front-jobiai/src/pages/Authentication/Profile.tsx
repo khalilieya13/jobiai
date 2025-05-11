@@ -1,26 +1,24 @@
-import { useEffect, useState } from 'react';
+import  { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
+import axios from 'axios';
 
-interface UserProfile {
-    email: string;
-    name?: string;
-}
+const API_URL = 'http://localhost:5000/jobiai/api';
 
 export function Profile() {
-    const [user, setUser] = useState<UserProfile | null>(null);
-    const [newPassword, setNewPassword] = useState('');
-    const [message, setMessage] = useState('');
-    const [messageType, setMessageType] = useState<'success' | 'error' | null>(null);
+    const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
+    const [isEditing, setIsEditing] = useState(false);
+    const [name, setName] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
         const token = localStorage.getItem('token');
-        console.log('Token:', token);
 
         if (!token) {
-            console.log('No token, redirecting to login');
+            setError('Not authenticated');
+            setLoading(false);
             navigate('/login');
             return;
         }
@@ -28,128 +26,167 @@ export function Profile() {
         try {
             const decodedToken: any = jwtDecode(token);
             const currentTime = Date.now() / 1000;
-            console.log('Decoded Token:', decodedToken);
 
             if (decodedToken.exp < currentTime) {
-                console.log('Token expired, redirecting');
                 localStorage.removeItem('token');
+                setError('Session expired');
+                setLoading(false);
                 navigate('/login');
                 return;
             }
 
-            axios
-                .get('http://localhost:5000/jobiai/api/profile', {
-                    headers: { Authorization: `Bearer ${token}` },
+            axios.get(`${API_URL}/profile`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+                .then(response => {
+                    setUser(response.data);
+                    setName(response.data.name || '');
+                    setLoading(false);
                 })
-                .then((res) => {
-                    console.log('Profile fetched:', res.data);
-                    setUser(res.data);
-                })
-                .catch((err) => {
-                    console.error('Error fetching profile:', err);
-                    navigate('/login');
+                .catch(() => {
+                    setError('Failed to load profile');
+                    setLoading(false);
                 });
         } catch (err) {
-            console.error('Error decoding token:', err);
-            localStorage.removeItem('token');
+            setError('Invalid token');
+            setLoading(false);
             navigate('/login');
         }
     }, [navigate]);
 
+    const handleSave = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(
+                `${API_URL}/profile`,
+                { name },
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            setIsEditing(false);
+            alert('Profile updated successfully');
+        } catch (error) {
+            alert('Failed to update profile');
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
         navigate('/login');
     };
 
-    const handleChangePassword = async () => {
-        if (newPassword.length < 6) {
-            setMessage('Password must be at least 6 characters long.');
-            setMessageType('error');
+    const handleDeleteAccount = async () => {
+        if (!window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
             return;
         }
 
         try {
             const token = localStorage.getItem('token');
-            await axios.put(
-                'http://localhost:5000/jobiai/api/change-password',
-                { newPassword },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            setMessage('Password updated successfully!');
-            setMessageType('success');
-            setTimeout(() => setMessage(''), 5000); // Clear message after 5 seconds
-        } catch (err) {
-            setMessage('Failed to update password.');
-            setMessageType('error');
-            setTimeout(() => setMessage(''), 5000); // Clear message after 5 seconds
-        }
-    };
-
-    const handleDeleteAccount = async () => {
-        if (!window.confirm('Are you sure you want to delete your account? This action is irreversible.')) return;
-
-        try {
-            const token = localStorage.getItem('token');
-            await axios.delete('http://localhost:5000/jobiai/api/delete-account', {
-                headers: { Authorization: `Bearer ${token}` },
+            await axios.delete(`${API_URL}/delete-account`, {
+                headers: { Authorization: `Bearer ${token}` }
             });
             localStorage.removeItem('token');
             navigate('/register');
-        } catch (err) {
-            setMessage('Failed to delete account.');
-            setMessageType('error');
-            setTimeout(() => setMessage(''), 5000); // Clear message after 5 seconds
+        } catch (error) {
+            alert('Failed to delete account');
         }
     };
 
-    if (!user) return <div>Loading...</div>;
+    if (loading) {
+        return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    }
+
+    if (error || !user) {
+        return <div className="flex justify-center items-center min-h-screen">{error}</div>;
+    }
 
     return (
-        <div className="max-w-4xl mx-auto p-6 space-y-6">
-            <h1 className="text-2xl font-bold">My Account</h1>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-2xl w-full space-y-6">
+                <div className="bg-indigo-600 text-white p-8 rounded-xl shadow-lg text-center">
+                    <h1 className="text-3xl font-bold">My Profile</h1>
+                    <p className="mt-2 text-indigo-200">Manage your account settings</p>
+                </div>
 
-            {message && <div className={`text-sm ${messageType === 'success' ? 'text-green-600' : 'text-red-600'}`}>{message}</div>}
+                <div className="bg-white rounded-xl shadow-lg p-8">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-semibold text-gray-800">Personal Information</h2>
+                        {!isEditing ? (
+                            <button
+                                onClick={() => setIsEditing(true)}
+                                className="text-indigo-600 hover:text-indigo-500 font-medium"
+                            >
+                                Edit
+                            </button>
+                        ) : (
+                            <div className="space-x-3">
+                                <button
+                                    onClick={handleSave}
+                                    className="text-green-600 hover:text-green-500 font-medium"
+                                >
+                                    Save
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setName(user.name || '');
+                                        setIsEditing(false);
+                                    }}
+                                    className="text-red-600 hover:text-red-500 font-medium"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
+                    </div>
 
-            <div className="bg-white shadow rounded p-4">
-                <h2 className="text-xl font-semibold mb-2">Personal Information</h2>
-                <p><strong>Email:</strong> {user.email}</p>
-                {user.name && <p><strong>Name:</strong> {user.name}</p>}
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                            {isEditing ? (
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="Enter your name"
+                                />
+                            ) : (
+                                <p className="text-gray-900 px-4 py-2">{user.name || 'Not provided'}</p>
+                            )}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                            <p className="text-gray-900 px-4 py-2">{user.email}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-lg p-8">
+                    <h2 className="text-2xl font-semibold text-gray-800 mb-6">Security</h2>
+                    <button
+                        onClick={() => navigate('/reset-password')}
+                        className="w-full bg-indigo-600 text-white py-3 px-4 rounded-lg hover:bg-indigo-500 transition-colors font-medium"
+                    >
+                        Change Password
+                    </button>
+                </div>
+
+                <div className="flex flex-col space-y-3">
+                    <button
+                        onClick={handleLogout}
+                        className="w-full bg-white text-gray-700 py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-lg border border-gray-200"
+                    >
+                        Sign Out
+                    </button>
+
+                    <button
+                        onClick={handleDeleteAccount}
+                        className="w-full bg-white text-red-600 py-3 px-4 rounded-lg hover:bg-red-50 transition-colors font-medium shadow-lg border border-red-200"
+                    >
+                        Delete Account
+                    </button>
+                </div>
             </div>
-
-            <div className="bg-white shadow rounded p-4">
-                <h2 className="text-xl font-semibold mb-2">Change Password</h2>
-                <input
-                    type="password"
-                    className="border rounded p-2 w-full mb-2"
-                    placeholder="New password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                />
-                <button
-                    onClick={handleChangePassword}
-                    className="bg-blue-600 text-white px-4 py-2 rounded"
-                >
-                    Update Password
-                </button>
-            </div>
-
-            <div className="bg-white shadow rounded p-4">
-                <h2 className="text-xl font-semibold mb-2 text-red-600">Danger Zone</h2>
-                <button
-                    onClick={handleDeleteAccount}
-                    className="bg-red-600 text-white px-4 py-2 rounded"
-                >
-                    Delete My Account
-                </button>
-            </div>
-
-            <button
-                onClick={handleLogout}
-                className="mt-4 bg-gray-600 text-white px-4 py-2 rounded"
-            >
-                Logout
-            </button>
         </div>
     );
 }

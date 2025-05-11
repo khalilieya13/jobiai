@@ -1,5 +1,12 @@
 import express from "express";
-import {signup, signin, getProfile} from "../controllers/authController";
+import {
+    signup,
+    signin,
+    getProfile,
+    requestPasswordReset,
+    verifyResetCode,
+    resetPassword
+} from "../controllers/authController";
 import { auth, isAdmin } from "../middlewares/authMiddleware";
 
 const router = express.Router();
@@ -13,4 +20,11 @@ router.get("/admin", auth, isAdmin, (req, res) => res.json({ message: "Bienvenue
 
 // @ts-ignore
 router.get('/profile', getProfile);
+
+// @ts-ignore
+router.post("/request-password-reset", requestPasswordReset);
+// @ts-ignore
+router.post("/verify-reset-code", verifyResetCode);
+// @ts-ignore
+router.post("/reset-password", resetPassword);
 export default router;
