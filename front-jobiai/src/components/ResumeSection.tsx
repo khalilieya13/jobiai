@@ -1,7 +1,37 @@
-
 import { FileText, ArrowRight } from 'lucide-react';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
+
+type JwtPayload = {
+    role: string;
+    exp: number;
+    iat: number;
+};
 
 export function ResumeSection() {
+    const navigate = useNavigate();
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+
+        try {
+            const decoded = jwtDecode<JwtPayload>(token);
+            if (decoded.role === 'candidate') {
+                navigate('/cv-builder');
+            }
+            // Si c'est un recruteur ou un autre rôle → on ne fait rien
+        } catch (err) {
+            console.error('Invalid token', err);
+            navigate('/login');
+        }
+    };
+
     return (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
             <div className="flex items-start">
@@ -15,9 +45,12 @@ export function ResumeSection() {
                         Our easy-to-use resume builder helps you create a standout resume in minutes.
                     </p>
                     <div className="mt-4">
-                        <a href="/cv-builder" className="inline-flex items-center text-indigo-600 font-medium hover:text-indigo-800 transition-colors duration-150">
+                        <button
+                            onClick={handleClick}
+                            className="inline-flex items-center text-indigo-600 font-medium hover:text-indigo-800 transition-colors duration-150"
+                        >
                             Create Resume <ArrowRight className="ml-2 h-4 w-4" />
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>

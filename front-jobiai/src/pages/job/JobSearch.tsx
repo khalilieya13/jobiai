@@ -3,6 +3,8 @@ import axios from 'axios';
 import { SearchBarJ } from '../../components/SearchBarJ.tsx';
 import { JobCard } from '../../components/JobCard.tsx';
 import { Filter, SlidersHorizontal } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+
 
 const filters = {
   employmentType: ['full-time', 'part-time', 'contract', 'internship'],
@@ -36,6 +38,21 @@ export function JobSearch() {
     workMode: [] as string[],
   });
   const [searchQuery, setSearchQuery] = useState({ keyword: '', location: '' });
+
+
+
+  const location = useLocation();
+
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const keywordFromURL = searchParams.get('keyword') || location.state?.keyword || '';
+    const locationFromURL = searchParams.get('location') || location.state?.location || '';
+
+    setSearchQuery({ keyword: keywordFromURL, location: locationFromURL });
+  }, [location]);
+
+
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -118,7 +135,12 @@ export function JobSearch() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Find Your Dream Job</h1>
-          <SearchBarJ onSearch={(keyword, location) => setSearchQuery({ keyword, location })} />
+          <SearchBarJ
+              keyword={searchQuery.keyword}
+              location={searchQuery.location}
+              onSearch={(keyword, location) => setSearchQuery({ keyword, location })}
+          />
+
         </div>
 
         <div className="flex gap-8">

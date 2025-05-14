@@ -7,17 +7,21 @@ import sgMail from "../config/sendgridConfig";
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 
-
 // 📌 Inscription
 export const signup = async (req: Request, res: Response) => {
-    const { email, password, role } = req.body;
+    const { email, password, role, username } = req.body; // 👈 ajouter username
 
     try {
         const userExists = await User.findOne({ email });
         if (userExists) return res.status(400).json({ message: "User already exists" });
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser: IUser = new User({ email, password: hashedPassword, role });
+        const newUser: IUser = new User({
+            email,
+            password: hashedPassword,
+            role,
+            username // 👈 ici aussi
+        });
         await newUser.save();
 
         const token = jwt.sign(
@@ -34,6 +38,7 @@ export const signup = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Server error", error });
     }
 };
+
 
 // 📌 Connexion
 export const signin = async (req: Request, res: Response) => {
@@ -73,6 +78,16 @@ export const getProfile = async (req: Request, res: Response) => {
         res.status(401).json({ message: 'Invalid token' });
     }
 };
+// 📌 Retourner tous les utilisateurs (réservé à l'admin)
+export const getAllUsers = async (req: Request, res: Response) => {
+    try {
+        const users = await User.find({ role: { $ne: "admin" } }).select("-password");
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la récupération des utilisateurs", error });
+    }
+};
+
 
 // 📌 Modifier le mot de passe
 export const changePassword = async (req: Request, res: Response) => {

@@ -9,30 +9,9 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
-
-
 import { useNavigate } from 'react-router-dom';
-const chartData = [
-  { month: 'Jan', applications: 20 },
-  { month: 'Feb', applications: 35 },
-  { month: 'Mar', applications: 45 },
-  { month: 'Apr', applications: 30 },
-  { month: 'May', applications: 55 },
-  { month: 'Jun', applications: 40 },
-  { month: 'Jul', applications: 65 },
-  { month: 'Aug', applications: 50 },
-  { month: 'Sep', applications: 70 },
-  { month: 'Oct', applications: 60 },
-  { month: 'Nov', applications: 80 },
-  { month: 'Dec', applications: 90 },
-];
 
-const departmentData = [
-  { department: 'Tech', applications: 50 },
-  { department: 'Marketing', applications: 30 },
-  { department: 'Sales', applications: 20 },
-  { department: 'HR', applications: 10 },
-];
+
 
 const COLORS = ['#FF5733', '#FFBD33', '#75FF33', '#33FF57']; // Couleurs vives // personnalisable
 
@@ -49,6 +28,30 @@ type Job = {
   department: string;
   applicationsCount?:number;
 };
+type CandidaciesByMonth = {
+  month: number;
+  count: number;
+};
+
+type CandidaciesByDepartment = {
+  department: string;
+  count: number;
+};
+
+type KPIStats = {
+  totalCandidates: number;
+  shortlisted: number;
+  rejected: number;
+  pending: number;
+  candidaciesByMonth: CandidaciesByMonth[];
+  candidaciesByDepartment: CandidaciesByDepartment[];
+  statusCounts: {
+    pending: number;
+    accepted: number;
+    rejected: number;
+  };
+};
+
 
 
 export function CompanyDashboard() {
@@ -66,7 +69,7 @@ export function CompanyDashboard() {
     status: '',
     date: ''
   });
-  const [kpiStats, setKpiStats] = useState({
+  const [kpiStats, setKpiStats] = useState<KPIStats>({
     totalCandidates: 0,
     shortlisted: 0,
     rejected: 0,
@@ -75,6 +78,26 @@ export function CompanyDashboard() {
     candidaciesByDepartment: [],
     statusCounts: { pending: 0, accepted: 0, rejected: 0 },
   });
+
+
+  // Transforme les données KPI en format compatible avec les graphiques
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const chartData = Array.isArray(kpiStats.candidaciesByMonth)
+      ? kpiStats.candidaciesByMonth.map(item => ({
+        month: monthNames[item.month - 1],
+        applications: item.count,
+      }))
+      : [];
+
+  const departmentData = Array.isArray(kpiStats.candidaciesByDepartment)
+      ? kpiStats.candidaciesByDepartment.map(item => ({
+        department: item.department,
+        applications: item.count,
+      }))
+      : [];
+
 
 
   const handleDelete = async () => {
@@ -105,6 +128,7 @@ export function CompanyDashboard() {
             Authorization: `Bearer ${token}`,
           },
         });
+
         console.log('Données KPI:', response.data);
         setKpiStats(response.data); // Update the kpiStats state with the fetched data
       } catch (error) {
@@ -129,14 +153,14 @@ export function CompanyDashboard() {
           // Fetch applications count
           const jobsWithCounts = await Promise.all(
               jobsData.map(async (job) => {
-                const res = await axios.get(`http://localhost:5000/jobiai/api/candidacy/job/${job._id}`, {
+                const response = await axios.get(`http://localhost:5000/jobiai/api/candidacy/job/${job._id}`, {
                   headers: {
                     Authorization: `Bearer ${token}`,
                   },
                 });
                 return {
                   ...job,
-                  applicationsCount: Array.isArray(res.data) ? res.data.length : 0,
+                  applicationsCount: Array.isArray(response.data) ? response.data.length : 0,
                 };
               })
           );
@@ -152,6 +176,7 @@ export function CompanyDashboard() {
         setLoading(false); // Ensure loading is set to false when data is loaded
       }
     };
+
 
     fetchKpiData();
     fetchJobs(); // Can be separated, or you can make them sequential if needed

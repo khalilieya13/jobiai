@@ -1,4 +1,7 @@
 import { Request, Response } from "express";
+import { io, connectedUsers } from "../server"; // 🔥 socket.io
+import Job from "../models/Job"; // pour retrouver le recruteur depuis une offre
+
 import Candidacy from "../models/Candidacy";
 import { AuthRequest } from "../middlewares/authMiddleware"; // Middleware d'auth
 
@@ -29,6 +32,7 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
         });
 
         await newCandidacy.save();
+
         res.status(201).json({ message: "Candidature envoyée avec succès", candidacy: newCandidacy });
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la candidature", error });
@@ -96,5 +100,22 @@ export const deleteCandidacy = async (req: Request, res: Response) => {
         res.status(200).json({ message: "Candidature supprimée avec succès" });
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la suppression", error });
+    }
+};
+export const getCandidacyCounts = async (req: Request, res: Response) => {
+    try {
+        // Count all candidacies
+        const totalCandidacies = await Candidacy.countDocuments();
+
+        // Count accepted candidacies
+        const acceptedCandidacies = await Candidacy.countDocuments({ status: "accepted" });
+
+        // Send both counts in the response
+        res.status(200).json({
+            totalCandidacies,
+            acceptedCandidacies
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Erreur lors de la récupération des candidatures", error });
     }
 };

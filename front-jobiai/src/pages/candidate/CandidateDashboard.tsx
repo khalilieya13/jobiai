@@ -18,29 +18,10 @@ import {
 import {useNavigate} from "react-router-dom";
 
 
-const applicationStats = {
-  total: 25,
-  viewed: 18,
-  inProgress: 8,
-  accepted: 3,
-  rejected: 4
-};
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-const statusData = [
-  { status: 'Accepted', value: 40 },
-  { status: 'Pending', value: 30 },
-  { status: 'Rejected', value: 20 },
-  { status: 'Interview', value: 10 },
-];
 
-const acceptanceByLocation = [
-  { name: 'Paris', rate: 70 },
-  { name: 'Lyon', rate: 50 },
-  { name: 'Marseille', rate: 40 },
-  { name: 'Toulouse', rate: 60 },
-];
 
 type Candidacy = {
   _id: string;
@@ -67,6 +48,9 @@ export function CandidateDashboard() {
 
 
   const [candidacyToDelete, setCandidacyToDelete] = useState<Candidacy | null>(null);
+  const [acceptedCompaniesData, setAcceptedCompaniesData] = useState<{ name: string; count: number }[]>([]);
+
+
 
 
 
@@ -88,6 +72,15 @@ export function CandidateDashboard() {
     }
   };
 
+  const [applicationStats, setApplicationStats] = useState({
+    total: 0,
+    accepted: 0,
+    rejected: 0,
+    pending: 0,
+  });
+
+  const [statusData, setStatusData] = useState([]);
+
   useEffect(() => {
     const fetchCandidacies = async () => {
       try {
@@ -95,32 +88,73 @@ export function CandidateDashboard() {
         const response = await axios.get('http://localhost:5000/jobiai/api/candidacy/', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setCandidacies(response.data);
+
         const candidaciesWithCompanyName = await Promise.all(
             response.data.map(async (candidacy: Candidacy) => {
-              // Faire une requête pour récupérer le nom de la compagnie
-              const companyResponse = await axios.get(`http://localhost:5000/jobiai/api/company/${candidacy.jobPost.idCompany}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
+              if (!candidacy.jobPost || !candidacy.jobPost.idCompany) {
+                return { ...candidacy, companyName: 'N/A' };
+              }
 
-              // Ajouter le nom de l'entreprise à l'objet candidacy
-              return {
-                ...candidacy,
-                companyName: companyResponse.data.name,  // Ajout du nom de la compagnie
-              };
+              try {
+                const companyResponse = await axios.get(
+                    `http://localhost:5000/jobiai/api/company/${candidacy.jobPost.idCompany}`,
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                return {
+                  ...candidacy,
+                  companyName: companyResponse.data.name || 'Non spécifiée',
+                };
+              } catch (error) {
+                console.warn(`Erreur récupération compagnie:`, error);
+                return { ...candidacy, companyName: 'Erreur de chargement' };
+              }
             })
         );
 
         setCandidacies(candidaciesWithCompanyName);
+
+        const total = candidaciesWithCompanyName.length;
+        const accepted = candidaciesWithCompanyName.filter(c => c.status === 'accepted').length;
+        const rejected = candidaciesWithCompanyName.filter(c => c.status === 'rejected').length;
+        const pending = candidaciesWithCompanyName.filter(c => c.status === 'pending').length;
+
+        setApplicationStats({ total, accepted, rejected, pending });
+
+        // Graphique 1 : Statut global
+        setStatusData([
+          { status: 'Accepted', value: accepted },
+          { status: 'Rejected', value: rejected },
+          { status: 'Pending', value: pending },
+        ]);
+
+        // Graphique 2 : Répartition des acceptations par entreprise
+        const acceptedByCompany: { [company: string]: number } = {};
+        candidaciesWithCompanyName.forEach(c => {
+          if (c.status === 'accepted') {
+            const company = c.companyName || 'Non spécifiée';
+            acceptedByCompany[company] = (acceptedByCompany[company] || 0) + 1;
+          }
+        });
+
+        const acceptedCompanies = Object.entries(acceptedByCompany).map(([name, count]) => ({
+          name,
+          count,
+        }));
+
+        setAcceptedCompaniesData(acceptedCompanies);
+
       } catch (err) {
-        //setError('Failed to load candidacies');
-      } finally {
-       // setLoading(false);
+        console.error('Erreur lors du chargement des candidatures :', err);
       }
     };
 
     fetchCandidacies();
   }, []);
+
+
+
+
 
 
 
@@ -158,8 +192,8 @@ export function CandidateDashboard() {
             <div className="flex items-center">
               <Eye className="h-12 w-12 text-blue-600"/>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Applications Viewed</p>
-                <p className="text-2xl font-bold text-gray-900">{applicationStats.viewed}</p>
+                <p className="text-sm text-gray-500">Applications rejected</p>
+                <p className="text-2xl font-bold text-gray-900">{applicationStats.rejected}</p>
               </div>
             </div>
           </div>
@@ -177,7 +211,7 @@ export function CandidateDashboard() {
               <Clock className="h-12 w-12 text-yellow-600"/>
               <div className="ml-4">
                 <p className="text-sm text-gray-500">In Progress</p>
-                <p className="text-2xl font-bold text-gray-900">{applicationStats.inProgress}</p>
+                <p className="text-2xl font-bold text-gray-900">{applicationStats.pending}</p>
               </div>
             </div>
           </div>
@@ -197,32 +231,38 @@ export function CandidateDashboard() {
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    label
+                    label={({ value, percent }) =>
+                        `${(percent * 100).toFixed(0)}%`
+                    }
                 >
                   {statusData.map((_entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]}/>
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
+
                 <RechartsTooltip/>
                 <Legend/>
               </PieChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Chart 2: Acceptance Rate by Location */}
+          {/* Chart 2: Companies that Accepted Me */}
           <div className="bg-white shadow rounded p-4">
-            <h2 className="text-xl font-semibold mb-2">Acceptance Rate by Location</h2>
+            <h2 className="text-xl font-semibold mb-2">Companies That Accepted Me</h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={acceptanceByLocation}>
+              <BarChart data={acceptedCompaniesData}>
                 <CartesianGrid strokeDasharray="3 3"/>
-                <XAxis dataKey="name"/>
-                <YAxis unit="%"/>
-                <RechartsTooltip/>
-                <Legend/>
-                <Bar dataKey="rate" fill="#82ca9d"/>
+                <XAxis dataKey="name" />
+                <YAxis allowDecimals={false} />
+                <RechartsTooltip />
+                <Legend />
+                <Bar dataKey="count" fill="#82ca9d" name="Accepted" />
               </BarChart>
             </ResponsiveContainer>
           </div>
+
+
+
         </div>
 
 
@@ -257,33 +297,30 @@ export function CandidateDashboard() {
                   <tr key={candidacy._id}>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
-                        {candidacy.jobPost.jobTitle}
+                        {candidacy.jobPost?.jobTitle || 'Titre non disponible'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{candidacy.companyName}</div>
+                      <div className="text-sm text-gray-500">{candidacy.companyName || 'Entreprise inconnue'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div
-                          className="text-sm text-gray-500">{new Date(candidacy.appliedAt).toLocaleString('fr-FR')}</div>
+                      <div className="text-sm text-gray-500">
+                        {new Date(candidacy.appliedAt).toLocaleString('fr-FR')}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-        <span
-            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(
-                candidacy.status
-            )}`}
-        >
-          {candidacy.status}
-        </span>
+      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(candidacy.status)}`}>
+        {candidacy.status}
+      </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center space-x-3">
                         <button
                             className="text-gray-400 hover:text-indigo-600"
-                            onClick={() => navigate(`/job/${candidacy.jobPost._id}`)}
+                            onClick={() => candidacy.jobPost?._id && navigate(`/job/${candidacy.jobPost._id}`)}
                             title="View Job Details"
                         >
-                          <ExternalLink className="h-5 w-5"/>
+                          <ExternalLink className="h-5 w-5" />
                         </button>
                         <button
                             className="text-gray-400 hover:text-red-600"
@@ -293,18 +330,19 @@ export function CandidateDashboard() {
                             }}
                             title="Cancel Application"
                         >
-                          <XCircle className="h-5 w-5"/>
+                          <XCircle className="h-5 w-5" />
                         </button>
                         <button
                             className="text-gray-400 hover:text-green-600"
-
+                            title="View Resume"
                         >
-                          <FileText className="h-5 w-5"/>
+                          <FileText className="h-5 w-5" />
                         </button>
                       </div>
                     </td>
                   </tr>
               ))}
+
               </tbody>
 
             </table>

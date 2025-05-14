@@ -5,7 +5,7 @@ import {
     getProfile,
     requestPasswordReset,
     verifyResetCode,
-    resetPassword
+    resetPassword, deleteAccount, getAllUsers
 } from "../controllers/authController";
 import { auth, isAdmin } from "../middlewares/authMiddleware";
 
@@ -21,6 +21,11 @@ router.get("/admin", auth, isAdmin, (req, res) => res.json({ message: "Bienvenue
 // @ts-ignore
 router.get('/profile', getProfile);
 
+// @ts-ignore
+router.get("/users", auth, isAdmin, getAllUsers);
+
+// @ts-ignore
+router.delete('/delete',auth, deleteAccount);
 // @ts-ignore
 router.post("/request-password-reset", requestPasswordReset);
 // @ts-ignore

@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import http from "http";
+import { Server } from "socket.io";
+
 import connectDB from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import companyRoutes from "./routes/companyRoutes";
@@ -16,6 +19,17 @@ dotenv.config();
 connectDB();
 
 const app = express();
+const server = http.createServer(app); // ⚠️ Crée un serveur HTTP
+
+// Crée une instance Socket.IO et configure le CORS
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000", // ton frontend
+        methods: ["GET", "POST"],
+        credentials: true,
+    },
+});
+
 app.use(cors());
 app.use(express.json());
 
@@ -28,11 +42,37 @@ app.use("/jobiai/api/candidacy", candidacyRoutes);
 app.use("/jobiai/api/quiz", quizRoutes);
 app.use("/jobiai/api/dashboard", dashboardRoutes);
 
+// Stockage des sockets connectés : userId -> socketId
+const connectedUsers = new Map<string, string>();
+
+// Socket.IO logic
+io.on("connection", (socket) => {
+    console.log("✅ Un utilisateur est connecté :", socket.id);
+
+    socket.on("register", (userId: string) => {
+        connectedUsers.set(userId, socket.id);
+        console.log(`🧾 Utilisateur ${userId} enregistré avec le socket ${socket.id}`);
+    });
+
+    socket.on("disconnect", () => {
+        for (let [userId, socketId] of connectedUsers.entries()) {
+            if (socketId === socket.id) {
+                connectedUsers.delete(userId);
+                break;
+            }
+        }
+        console.log("❌ Utilisateur déconnecté :", socket.id);
+    });
+});
+
+// Export des objets utiles aux contrôleurs
+export { io, connectedUsers };
 
 
 
 
+// Lancement du serveur
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`🚀 Serveur TypeScript en ligne sur http://localhost:${PORT}`);
+server.listen(PORT, () => {
+    console.log(`🚀 Serveur avec Socket.IO lancé sur http://localhost:${PORT}`);
 });

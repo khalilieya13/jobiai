@@ -1,7 +1,7 @@
 export interface Job {
   _id: string;
   jobTitle: string;
-  company: string;
+  company: Company;
   location: string;
   employmentType: string;
   department: string;
@@ -15,17 +15,20 @@ export interface Job {
   requirements: string[];
   postedAt: string;
 }
-
-export interface User {
-  id: string;
+export interface Company {
+  _id: string;
   name: string;
+}
+export interface User {
+  _id: string;
   email: string;
-  type: 'candidate' | 'recruiter';
-  avatar?: string;
+  password: string;
+  role: "admin" | "candidate" | "recruiter";
+  username: string;
 }
 
 export interface Application {
-  id: string;
+  _id: string;
   jobId: string;
   userId: string;
   status: 'pending' | 'reviewing' | 'accepted' | 'rejected';

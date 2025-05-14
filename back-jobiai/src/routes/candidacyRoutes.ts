@@ -5,7 +5,7 @@ import {
     getCandidaciesByCandidate,
     getCandidaciesByJobPost,
     updateCandidacyStatus,
-    deleteCandidacy
+    deleteCandidacy, getCandidacyCounts,
 } from "../controllers/candidacyController";
 
 const router = express.Router();
@@ -20,6 +20,11 @@ router.get("/job/:jobPostId", getCandidaciesByJobPost); // 🔹 Récupérer les 
 router.put("/:id", updateCandidacyStatus); // 🔹 Mettre à jour le statut d'une candidature
 // @ts-ignore
 router.delete("/:id", deleteCandidacy); // 🔹 Supprimer une candidature
+
+router.get("/all", getCandidacyCounts);
+
+
+
 
 
 

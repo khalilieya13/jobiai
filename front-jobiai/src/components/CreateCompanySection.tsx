@@ -1,7 +1,37 @@
-
 import { Briefcase, ArrowRight } from 'lucide-react';
+import { jwtDecode } from 'jwt-decode';
+import { useNavigate } from 'react-router-dom';
+
+type JwtPayload = {
+    role: string;
+    exp: number;
+    iat: number;
+};
 
 export function CreateCompanySection() {
+    const navigate = useNavigate();
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+            navigate('/login');
+            return;
+        }
+
+        try {
+            const decoded = jwtDecode<JwtPayload>(token);
+            if (decoded.role === 'recruiter') {
+                navigate('/company/profile/creation');
+            }
+            // Si connecté mais pas recruteur → on ne fait rien
+        } catch (err) {
+            console.error('Invalid token', err);
+            navigate('/login');
+        }
+    };
+
     return (
         <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
             <div className="flex items-start">
@@ -11,13 +41,16 @@ export function CreateCompanySection() {
                 <div className="ml-5">
                     <h3 className="text-xl font-semibold text-gray-900">Want to create your company profile?</h3>
                     <p className="mt-2 text-gray-600">
-                        Reach thousands of qualified candidates. Start with creating your  company profile and
+                        Reach thousands of qualified candidates. Start with creating your company profile and
                         get applications from the right talent.
                     </p>
                     <div className="mt-4">
-                        <a href="/company/profile/creation" className="inline-flex items-center text-indigo-600 font-medium hover:text-indigo-800 transition-colors duration-150">
+                        <button
+                            onClick={handleClick}
+                            className="inline-flex items-center text-indigo-600 font-medium hover:text-indigo-800 transition-colors duration-150"
+                        >
                             Create company profile <ArrowRight className="ml-2 h-4 w-4" />
-                        </a>
+                        </button>
                     </div>
                 </div>
             </div>

@@ -24,6 +24,7 @@ import {TestCreation} from "./pages/job/TestCreation.tsx";
 import {TestResponse} from "./pages/candidate/TestResponse.tsx";
 import {Profile} from "./pages/Authentication/Profile.tsx";
 import {PasswordReset} from "./pages/Authentication/PasswordReset.tsx";
+import AdminDashboard from "./pages/AdminDashboard.tsx";
 
 
 
@@ -61,6 +62,9 @@ function App() {
 
           <Route path="/candidate/profile/edition" element={<RequireAuth><CandidateProfileEdition /></RequireAuth>} />
           <Route path="/test/taker/:jobPostId" element={<RequireAuth><TestResponse /></RequireAuth>} />
+          <Route path="/admin/dashboard" element={<JobSearch />} />
+
+          <Route path="/admin" element={<AdminDashboard />} />
 
 
         </Routes>

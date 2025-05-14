@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { jwtDecode } from 'jwt-decode';
+
 import axios from 'axios';
 import { Mail, Lock, BriefcaseIcon } from 'lucide-react';
 
@@ -19,19 +21,30 @@ export function Login() {
         password
       });
 
-      // Récupérer le token
       const { token } = response.data;
 
-      // Stocker le token dans localStorage
+      // Stocker le token
       localStorage.setItem('token', token);
 
-      // Rediriger vers la page d'accueil ou dashboard
-      navigate('/dashboard');
+      // Décoder le token pour récupérer le rôle
+      const decoded: { role: string } = jwtDecode(token);
+
+      // Redirection selon le rôle
+      if (decoded.role === 'candidate') {
+        navigate('/jobs');
+      } else if (decoded.role === 'recruiter') {
+        navigate('/candidates');
+      } else if (decoded.role === 'admin') {
+        navigate('/adminDashboard');
+      } else {
+        navigate('/'); // Redirection par défaut
+      }
     } catch (err) {
       console.error(err);
       setError('Invalid email or password. Please try again.');
     }
   };
+
 
   return (
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
