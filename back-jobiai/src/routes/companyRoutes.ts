@@ -6,8 +6,10 @@ import {
     getCompanyById,
     updateCompany,
     deleteCompany,
-    getCompanyByUser
+    getCompanyByUser, getCompanyByUserId
 } from "../controllers/companyController";
+import { uploadLogo } from "../controllers/companyController";
+import { createUploader } from "../middlewares/upload";
 
 
 const router = express.Router();
@@ -26,5 +28,11 @@ router.get("/:id", getCompanyById); // 🔹 Récupérer une entreprise par ID
 router.put("/:id",  updateCompany); // 🔹 Mettre à jour une entreprise
 // @ts-ignore
 router.delete("/:id", deleteCompany); // 🔹 Supprimer une entreprise
+// @ts-ignore
+router.get("/user/:userId", getCompanyByUserId);
+
+const logoUploader = createUploader("logos", ["image/jpeg", "image/png"]);
+// @ts-ignore
+router.post("/upload-logo", logoUploader.single("logo"), uploadLogo);
 
 export default router;

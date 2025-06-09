@@ -5,7 +5,7 @@ import {
     getAllJobs,
     getJobById,
     updateJob,
-    deleteJob, getCompanyJobs,searchJobs
+    deleteJob, getCompanyJobs, searchJobs, getJobsByCompanyId
 } from "../controllers/jobController";
 
 const router = express.Router();
@@ -24,5 +24,8 @@ router.put("/:id", auth, updateJob); // 🔹 Mettre à jour une offre d'emploi
 router.delete("/:id", auth, deleteJob); // 🔹 Supprimer une offre d'emploi
 
 router.get("/search", searchJobs);
+
+router.get('/by-company/:companyId', getJobsByCompanyId);
+
 
 export default router;

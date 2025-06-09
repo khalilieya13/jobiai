@@ -7,6 +7,7 @@ export function Register() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [userType, setUserType] = useState<'candidate' | 'recruiter'>('candidate');
   const [error, setError] = useState<string | null>(null);
 
@@ -16,6 +17,7 @@ export function Register() {
 
     try {
       const response = await axios.post('http://localhost:5000/jobiai/api/signup', {
+        username,
         email,
         password,
         role: userType
@@ -63,12 +65,29 @@ export function Register() {
 
             <form className="space-y-6" onSubmit={handleSubmit}>
               <div>
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <input
+                      id="username"
+                      name="username"
+                      type="text"
+                      required
+                      className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="User name"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                   Email address
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Mail className="h-5 w-5 text-gray-400" />
+                    <Mail className="h-5 w-5 text-gray-400"/>
                   </div>
                   <input
                       id="email"
@@ -77,7 +96,7 @@ export function Register() {
                       autoComplete="email"
                       required
                       className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="you@example.com"
+                      placeholder="Email address"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                   />
@@ -90,7 +109,7 @@ export function Register() {
                 </label>
                 <div className="mt-1 relative rounded-md shadow-sm">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Lock className="h-5 w-5 text-gray-400" />
+                    <Lock className="h-5 w-5 text-gray-400"/>
                   </div>
                   <input
                       id="password"

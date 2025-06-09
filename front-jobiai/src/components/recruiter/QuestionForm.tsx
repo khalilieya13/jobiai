@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PlusCircle, MinusCircle, Trash2 } from 'lucide-react';
 import Button from '../ui/Button';
 import { Question } from '../../types';
@@ -18,39 +18,40 @@ const QuestionForm: React.FC<QuestionFormProps> = ({
                                                    }) => {
     const [localQuestion, setLocalQuestion] = useState<Question>(question);
 
+    useEffect(() => {
+        setLocalQuestion(question);
+    }, [question]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setLocalQuestion(prev => {
-            const updated = { ...prev, [name]: value };
-            onUpdate(updated);
-            return updated;
-        });
+        const updatedQuestion = { ...localQuestion, [name]: value };
+        setLocalQuestion(updatedQuestion);
+        onUpdate(updatedQuestion);
     };
 
     const handleOptionChange = (index: number, value: string) => {
         const updatedOptions = [...(localQuestion.options || [])];
         updatedOptions[index] = value;
 
-        const updated = { ...localQuestion, options: updatedOptions };
-        setLocalQuestion(updated);
-        onUpdate(updated);
+        const updatedQuestion = { ...localQuestion, options: updatedOptions };
+        setLocalQuestion(updatedQuestion);
+        onUpdate(updatedQuestion);
     };
 
     const addOption = () => {
         const updatedOptions = [...(localQuestion.options || []), ''];
-
-        const updated = { ...localQuestion, options: updatedOptions };
-        setLocalQuestion(updated);
-        onUpdate(updated);
+        const updatedQuestion = { ...localQuestion, options: updatedOptions };
+        setLocalQuestion(updatedQuestion);
+        onUpdate(updatedQuestion);
     };
 
     const removeOption = (index: number) => {
         const updatedOptions = [...(localQuestion.options || [])];
         updatedOptions.splice(index, 1);
 
-        const updated = { ...localQuestion, options: updatedOptions };
-        setLocalQuestion(updated);
-        onUpdate(updated);
+        const updatedQuestion = { ...localQuestion, options: updatedOptions };
+        setLocalQuestion(updatedQuestion);
+        onUpdate(updatedQuestion);
     };
 
     return (
@@ -74,7 +75,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({
                 </label>
                 <textarea
                     name="text"
-                    value={localQuestion.text}
+                    value={localQuestion.text || ''}
                     onChange={handleChange}
                     className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     rows={2}
@@ -88,13 +89,12 @@ const QuestionForm: React.FC<QuestionFormProps> = ({
                     </label>
                     <select
                         name="type"
-                        value={localQuestion.type}
+                        value={localQuestion.type || 'multiple-choice'}
                         onChange={handleChange}
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                     >
                         <option value="multiple-choice">Multiple Choice</option>
                         <option value="true-false">True/False</option>
-
                     </select>
                 </div>
                 <div>
@@ -104,7 +104,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({
                     <input
                         type="number"
                         name="points"
-                        value={localQuestion.points}
+                        value={localQuestion.points || 1}
                         onChange={handleChange}
                         className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         min="1"
@@ -132,7 +132,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({
                         <div key={idx} className="flex items-center mb-2">
                             <input
                                 type="text"
-                                value={option}
+                                value={option || ''}
                                 onChange={(e) => handleOptionChange(idx, e.target.value)}
                                 className="flex-grow p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                                 placeholder={`Option ${idx + 1}`}
@@ -157,7 +157,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({
                     {localQuestion.type === 'true-false' ? (
                         <select
                             name="correctAnswer"
-                            value={localQuestion.correctAnswer as string}
+                            value={localQuestion.correctAnswer || ''}
                             onChange={handleChange}
                             className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         >
@@ -168,7 +168,7 @@ const QuestionForm: React.FC<QuestionFormProps> = ({
                     ) : (
                         <select
                             name="correctAnswer"
-                            value={localQuestion.correctAnswer as string}
+                            value={localQuestion.correctAnswer || ''}
                             onChange={handleChange}
                             className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                         >

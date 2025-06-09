@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET as string;
 export interface AuthRequest extends Request {
     user?: { id: string; role: string };
 }
+
 // 📌 Vérifier le token JWT
 export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
     const token = req.header("Authorization");

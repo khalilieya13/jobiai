@@ -1,27 +1,79 @@
 import { Request, Response } from "express";
-import { io, connectedUsers } from "../server"; // 🔥 socket.io
-import Job from "../models/Job"; // pour retrouver le recruteur depuis une offre
-
+import { io, connectedUsers } from "../server";
+import Job from "../models/Job";
+import User from "../models/User";
+import Notification from "../models/Notification";
 import Candidacy from "../models/Candidacy";
-import { AuthRequest } from "../middlewares/authMiddleware"; // Middleware d'auth
+import { AuthRequest } from "../middlewares/authMiddleware";
+import mongoose from "mongoose";
 
-// 📌 Postuler à une offre d'emploi
+interface PopulatedJob {
+    _id: mongoose.Types.ObjectId;
+    jobTitle: string;
+    idCompany?: {
+        createdBy: {
+            _id: mongoose.Types.ObjectId;
+        };
+    };
+}
+
+interface PopulatedCandidate {
+    _id: mongoose.Types.ObjectId;
+}
+
+interface PopulatedCandidacy {
+    candidate: PopulatedCandidate;
+    jobPost: PopulatedJob;
+}
+
+const createAndSendNotification = async (
+    userId: string,
+    message: string,
+    link: string,
+    notificationType: string
+) => {
+    try {
+        await Notification.create({
+            userId,
+            message,
+            read: false,
+            link,
+            timestamp: new Date(),
+        });
+
+        const socketId = connectedUsers.get(userId);
+        if (socketId) {
+            io.to(socketId).emit("new-notification", {
+                message,
+                link,
+                type: notificationType,
+                date: new Date(),
+            });
+        }
+    } catch (error) {
+        console.error("Error creating/sending notification:", error);
+    }
+};
+
 export const applyToJob = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) {
-            return res.status(401).json({ message: "Non autorisé" });
+            return res.status(401).json({ message: "Unauthorized" });
         }
 
         const { jobPost } = req.body;
 
         if (!jobPost) {
-            return res.status(400).json({ message: "L'ID de l'offre d'emploi est requis" });
+            return res.status(400).json({ message: "Job post ID is required" });
         }
 
-        // Vérifier si le candidat a déjà postulé
-        const existingCandidacy = await Candidacy.findOne({ jobPost, candidate: req.user.id });
+        const existingCandidacy = await Candidacy.findOne({
+            jobPost,
+            candidate: req.user.id
+        });
+
         if (existingCandidacy) {
-            return res.status(400).json({ message: "Vous avez déjà postulé à cette offre" });
+            return res.status(400).json({ message: "You have already applied to this job" });
         }
 
         const newCandidacy = new Candidacy({
@@ -33,89 +85,156 @@ export const applyToJob = async (req: AuthRequest, res: Response) => {
 
         await newCandidacy.save();
 
-        res.status(201).json({ message: "Candidature envoyée avec succès", candidacy: newCandidacy });
+         const job = await Job.findById(jobPost)
+            .populate({
+                path: 'idCompany',
+                populate: {
+                    path: 'createdBy',
+                    model: User,
+                    select: '_id'
+                },
+            })
+            .lean<PopulatedJob>()
+            .exec();
+
+        if (job?.idCompany?.createdBy?._id) {
+            const recruiterId = job.idCompany.createdBy._id.toString();
+            const jobTitle = job.jobTitle;
+
+            const notificationMessage = `A candidate has applied to your job posting "${jobTitle}".`;
+            const notificationLink = `/company/candidate/list/${job._id}`;
+
+            await createAndSendNotification(
+                recruiterId,
+                notificationMessage,
+                notificationLink,
+                "candidacy"
+            );
+        }
+
+        res.status(201).json({
+            message: "Application submitted successfully",
+            candidacy: newCandidacy
+        });
     } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la candidature", error });
+        console.error("Server error in applyToJob:", error);
+        res.status(500).json({ message: "Error submitting application", error });
     }
 };
 
-// 📌 Récupérer les candidatures d'un candidat
 export const getCandidaciesByCandidate = async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) {
-            return res.status(401).json({ message: "Non autorisé" });
+            return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const candidacies = await Candidacy.find({ candidate: req.user.id }).populate("jobPost");
+        const candidacies = await Candidacy.find({ candidate: req.user.id })
+            .populate("jobPost")
+            .lean()
+            .exec();
         res.status(200).json(candidacies);
     } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la récupération des candidatures", error });
+        console.error("Error retrieving applications:", error);
+        res.status(500).json({ message: "Error retrieving applications", error: error instanceof Error ? error.message : error });
     }
+
 };
 
-// 📌 Récupérer toutes les candidatures pour une offre d'emploi
 export const getCandidaciesByJobPost = async (req: Request, res: Response) => {
     try {
         const { jobPostId } = req.params;
 
-        const candidacies = await Candidacy.find({ jobPost: jobPostId });
+        const candidacies = await Candidacy.find({ jobPost: jobPostId })
+            .lean()
+            .exec();
         res.status(200).json(candidacies);
     } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la récupération des candidatures", error });
+        res.status(500).json({ message: "Error retrieving applications", error });
     }
 };
 
-// 📌 Mettre à jour le statut d'une candidature (ex: accepté/rejeté)
 export const updateCandidacyStatus = async (req: Request, res: Response) => {
     try {
         const { status } = req.body;
+        const { id } = req.params;
 
         if (!["pending", "accepted", "rejected"].includes(status)) {
-            return res.status(400).json({ message: "Statut invalide" });
+            return res.status(400).json({ message: "Invalid status" });
         }
 
         const updatedCandidacy = await Candidacy.findByIdAndUpdate(
-            req.params.id,
+            id,
             { status },
             { new: true }
-        );
+        )
+            .populate("candidate", "_id")
+            .populate("jobPost", "jobTitle")
+            .lean<PopulatedCandidacy>()
+            .exec();
 
         if (!updatedCandidacy) {
-            return res.status(404).json({ message: "Candidature non trouvée" });
+            return res.status(404).json({ message: "Application not found" });
         }
 
-        res.status(200).json({ message: "Statut mis à jour", candidacy: updatedCandidacy });
+        if (updatedCandidacy.candidate._id && updatedCandidacy.jobPost.jobTitle) {
+            const candidateId = updatedCandidacy.candidate._id.toString();
+            const jobTitle = updatedCandidacy.jobPost.jobTitle;
+
+            let statusText = "";
+            switch (status) {
+                case "accepted":
+                    statusText = "accepted";
+                    break;
+                case "rejected":
+                    statusText = "rejected";
+                    break;
+                default:
+                    statusText = "updated";
+            }
+
+            const notificationMessage = `Your application for "${jobTitle}" has been ${statusText}.`;
+            const notificationLink = '/candidate/dashboard';
+
+            await createAndSendNotification(
+                candidateId,
+                notificationMessage,
+                notificationLink,
+                "candidacy-update"
+            );
+        }
+
+        res.status(200).json({
+            message: "Status updated successfully",
+            candidacy: updatedCandidacy
+        });
     } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la mise à jour", error });
+        console.error("Server error in updateCandidacyStatus:", error);
+        res.status(500).json({ message: "Server error", error });
     }
 };
 
-// 📌 Supprimer une candidature
 export const deleteCandidacy = async (req: Request, res: Response) => {
     try {
         const deletedCandidacy = await Candidacy.findByIdAndDelete(req.params.id);
         if (!deletedCandidacy) {
-            return res.status(404).json({ message: "Candidature non trouvée" });
+            return res.status(404).json({ message: "Application not found" });
         }
-        res.status(200).json({ message: "Candidature supprimée avec succès" });
+        res.status(200).json({ message: "Application deleted successfully" });
     } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la suppression", error });
+        res.status(500).json({ message: "Error deleting application", error });
     }
 };
+
 export const getCandidacyCounts = async (req: Request, res: Response) => {
     try {
-        // Count all candidacies
         const totalCandidacies = await Candidacy.countDocuments();
-
-        // Count accepted candidacies
         const acceptedCandidacies = await Candidacy.countDocuments({ status: "accepted" });
 
-        // Send both counts in the response
         res.status(200).json({
             totalCandidacies,
             acceptedCandidacies
         });
     } catch (error) {
-        res.status(500).json({ message: "Erreur lors de la récupération des candidatures", error });
+        res.status(500).json({ message: "Error retrieving application counts", error });
     }
 };

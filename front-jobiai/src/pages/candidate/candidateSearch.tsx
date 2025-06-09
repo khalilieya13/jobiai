@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { SearchBar } from '../../components/candidate/SearchBar.tsx';
-import { CandidateCard } from '../../components/candidate/CandidateCard.tsx';
+import { SearchBar } from '../../components/candidate/SearchBar';
+import { CandidateCard } from '../../components/candidate/CandidateCard';
+import { CandidateRecommendation } from '../../components/CandidateRecommendation';
 import { Filter, SlidersHorizontal } from 'lucide-react';
-import { ResumeCandidate } from '../../types.ts';
+import { ResumeCandidate } from '../../types';
 
 const filters = {
     experience: ['Entry Level', 'Mid Level', 'Senior Level', 'Executive'],
@@ -11,49 +12,16 @@ const filters = {
     skills: ['React', 'TypeScript', 'Node.js', 'Python', 'Java', 'DevOps'],
 };
 
-// Function to map years of experience to experience levels
 const mapExperienceToLevel = (years: number): string => {
     if (years < 2) return 'Entry Level';
     if (years >= 2 && years < 5) return 'Mid Level';
     if (years >= 5 && years < 10) return 'Senior Level';
-    return 'Executive'; // 10+ years
+    return 'Executive';
 };
-
-interface Candidate {
-    id: string;
-    name: string;
-    title: string;
-    location: string;
-    experience: string;
-    education: string;
-    skills: string[];
-    lastActive: string;
-}
-
-function mapResumeToCandidate(resume: ResumeCandidate): Candidate {
-    const totalExperience = resume.experience.reduce((total, exp) => {
-        const startYear = parseInt(exp.startYear);
-        const endYear = exp.endYear ? parseInt(exp.endYear) : new Date().getFullYear();
-        return total + (endYear - startYear);
-    }, 0);
-
-    return {
-        id: resume._id,
-        name: resume.personalInfo.fullName,
-        title: resume.personalInfo.title,
-        location: resume.personalInfo.address || 'N/A',
-        experience: `${totalExperience} years`, // Keep it in years
-        education: resume.education[0]
-            ? `${resume.education[0].title} – ${resume.education[0].institution}`
-            : 'No education',
-        skills: resume.skills.map((s) => s.name),
-        lastActive: '3 days ago',
-    };
-}
 
 export function CandidateSearch() {
     const [showFilters, setShowFilters] = useState(false);
-    const [candidates, setCandidates] = useState<Candidate[]>([]);
+    const [resumes, setResumes] = useState<ResumeCandidate[]>([]);
     const [activeFilters, setActiveFilters] = useState<{
         experience: string[];
         education: string[];
@@ -67,22 +35,19 @@ export function CandidateSearch() {
     const [location, setLocation] = useState('');
 
     useEffect(() => {
-        const fetchCandidates = async () => {
+        const fetchResumes = async () => {
             try {
                 const token = localStorage.getItem('token');
                 const response = await axios.get('http://localhost:5000/jobiai/api/resume/all', {
                     headers: { Authorization: `Bearer ${token}` },
                 });
-
-                const resumes: ResumeCandidate[] = response.data;
-                const mappedCandidates = resumes.map(mapResumeToCandidate);
-                setCandidates(mappedCandidates);
+                setResumes(response.data);
             } catch (error) {
-                console.error('Error fetching candidates:', error);
+                console.error('Error fetching resumes:', error);
             }
         };
 
-        fetchCandidates();
+        fetchResumes();
     }, []);
 
     const handleFilterChange = (category: keyof typeof filters, option: string) => {
@@ -99,37 +64,50 @@ export function CandidateSearch() {
     const handleSearch = (query: string, location: string) => {
         setQuery(query);
         setLocation(location);
+
+        // Scroll to the candidates section
+        const candidatesSection = document.getElementById('candidates-section');
+        if (candidatesSection) {
+            candidatesSection.scrollIntoView({ behavior: 'smooth' });
+        }
     };
 
-    const filteredCandidates = candidates.filter((candidate) => {
+    const filteredResumes = resumes.filter((resume) => {
+        const totalExperience = resume.experience.reduce((total, exp) => {
+            const startYear = parseInt(exp.startYear);
+            const endYear = exp.endYear ? parseInt(exp.endYear) : new Date().getFullYear();
+            return total + (endYear - startYear);
+        }, 0);
+
         const matchExperience =
             activeFilters.experience.length === 0 ||
-            activeFilters.experience.some((exp) =>
-                mapExperienceToLevel(parseInt(candidate.experience.split(' ')[0])) === exp
-            );
+            activeFilters.experience.some((exp) => mapExperienceToLevel(totalExperience) === exp);
 
         const matchEducation =
             activeFilters.education.length === 0 ||
-            activeFilters.education.some((edu) => candidate.education.toLowerCase().includes(edu.toLowerCase()));
+            activeFilters.education.some((edu) =>
+                resume.education.some(e => e.title.toLowerCase().includes(edu.toLowerCase()))
+            );
 
         const matchSkills =
             activeFilters.skills.length === 0 ||
             activeFilters.skills.some((skill) =>
-                candidate.skills.map((s) => s.toLowerCase()).includes(skill.toLowerCase())
+                resume.skills.some(s => s.name.toLowerCase().includes(skill.toLowerCase()))
             );
 
         const matchLocation =
-            location === '' || candidate.location.toLowerCase().includes(location.toLowerCase());
+            location === '' ||
+            (resume.personalInfo.address &&
+                resume.personalInfo.address.toLowerCase().includes(location.toLowerCase()));
 
         const matchQuery =
             query === '' ||
-            candidate.name.toLowerCase().includes(query.toLowerCase()) ||
-            candidate.title.toLowerCase().includes(query.toLowerCase()) ||
-            candidate.skills.some((skill) => skill.toLowerCase().includes(query.toLowerCase()));
+            resume.personalInfo.fullName.toLowerCase().includes(query.toLowerCase()) ||
+            resume.personalInfo.title.toLowerCase().includes(query.toLowerCase()) ||
+            resume.skills.some((skill) => skill.name.toLowerCase().includes(query.toLowerCase()));
 
         return matchExperience && matchEducation && matchSkills && matchQuery && matchLocation;
     });
-
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -138,8 +116,10 @@ export function CandidateSearch() {
                 <SearchBar onSearch={handleSearch} />
             </div>
 
-            <div className="flex gap-8">
-                {/* Filters Sidebar */}
+            {/* AI Candidate Recommendations Section */}
+            <CandidateRecommendation />
+
+            <div id="candidates-section" className="flex gap-8">
                 <div className={`w-64 shrink-0 ${showFilters ? 'block' : 'hidden'} md:block`}>
                     <div className="bg-white rounded-lg shadow-sm p-6">
                         <div className="flex items-center justify-between mb-4">
@@ -170,7 +150,6 @@ export function CandidateSearch() {
                     </div>
                 </div>
 
-                {/* Main Content */}
                 <div className="flex-1">
                     <div className="flex justify-between items-center mb-6">
                         <button
@@ -191,11 +170,20 @@ export function CandidateSearch() {
                         </div>
                     </div>
 
-                    <div className="space-y-6">
-                        {filteredCandidates.map((candidate) => (
-                            <CandidateCard key={candidate.id} candidate={candidate} />
-                        ))}
-                    </div>
+                    {filteredResumes.length === 0 ? (
+                        <div className="bg-white rounded-lg shadow-sm p-10 text-center">
+                            <p className="text-gray-500 text-lg">No candidates match your current filters.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {filteredResumes.map((resume) => (
+                                <CandidateCard
+                                    key={resume._id}
+                                    resume={resume}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

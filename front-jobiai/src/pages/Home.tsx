@@ -27,7 +27,7 @@ export function Home() {
                     <p className="text-xl text-center text-indigo-200 mb-10">
                         Search thousands of jobs from top companies
                     </p>
-                    <div className="max-w-5xl mx-auto">
+                    <div className="max-w-5xl mx-auto text-black">
                         <SearchBarJ
                             keyword={searchQuery.keyword}      // Ajoutez le keyword
                             location={searchQuery.location}    // Ajoutez la location

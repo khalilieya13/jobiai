@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import Quiz from "../models/Quiz";
 import Job from "../models/Job";
+import QuizResponse from '../models/QuizResponses';
 import { AuthRequest } from "../middlewares/authMiddleware";
 import mongoose from "mongoose";
 
@@ -93,5 +94,51 @@ export const getQuizzesByJob = async (req: Request, res: Response) => {
         res.status(200).json(quizzes);
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la récupération des quiz", error });
+    }
+};
+
+export const getCandidateScore = async (req: Request, res: Response) => {
+    const { quizId, candidateId } = req.params;
+
+    try {
+        const response = await QuizResponse.findOne({ quizId, candidateId });
+
+        if (!response) {
+            return res.status(404).json({ message: 'Aucune réponse trouvée pour ce quiz et ce candidat.' });
+        }
+
+        res.status(200).json({
+            score: response.score,
+            timeTaken: response.timeTaken,
+            submittedAt: response.submittedAt
+        });
+    } catch (err) {
+        console.error('Erreur lors de la récupération du score :', err);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
+};
+export const submitQuizResponse = async (req: Request, res: Response) => {
+    const { quizId } = req.params;
+    const { candidateId, score, timeTaken } = req.body;
+
+    if (!candidateId || score == null || timeTaken == null) {
+        return res.status(400).json({ message: 'Tous les champs sont requis (candidateId, score, timeTaken).' });
+    }
+
+    try {
+        const newResponse = new QuizResponse({
+            quizId,
+            candidateId,
+            score,
+            timeTaken,
+            submittedAt: new Date(),
+        });
+
+        await newResponse.save();
+
+        res.status(201).json({ message: 'Réponse enregistrée avec succès.', response: newResponse });
+    } catch (err) {
+        console.error('Erreur lors de la soumission du quiz :', err);
+        res.status(500).json({ message: 'Erreur serveur.' });
     }
 };

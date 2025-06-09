@@ -6,8 +6,11 @@ import {
     getResumeById,
     updateResume,
     deleteResume,
-    getResumeByUser, searchResumes
+    getResumeByUser, searchResumes, uploadPdfAndCreateResume, getResumeByUserId
 } from "../controllers/resumeController";
+
+import { createUploader } from "../middlewares/upload";
+
 
 const router = express.Router();
 
@@ -26,5 +29,12 @@ router.put("/:id", updateResume); // 🔹 Mettre à jour un CV
 router.delete("/:id", deleteResume); // 🔹 Supprimer un CV
 
 router.get("/search", searchResumes);
+// @ts-ignore
+router.get("/user/:userId", auth, getResumeByUserId);
+
+
+const pdfUploader = createUploader("pdfs", ["application/pdf"]);
+// @ts-ignore
+router.post("/upload-pdf", auth, pdfUploader.single("file"), uploadPdfAndCreateResume);
 
 export default router;

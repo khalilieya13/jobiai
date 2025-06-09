@@ -123,9 +123,9 @@ export function CandidateDashboard() {
 
         // Graphique 1 : Statut global
         setStatusData([
-          { status: 'Accepted', value: accepted },
-          { status: 'Rejected', value: rejected },
-          { status: 'Pending', value: pending },
+          { status: 'accepted', value: accepted },
+          { status: 'rejected', value: rejected },
+          { status: 'pending', value: pending },
         ]);
 
         // Graphique 2 : Répartition des acceptations par entreprise

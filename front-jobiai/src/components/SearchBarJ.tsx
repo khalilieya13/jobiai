@@ -19,6 +19,12 @@ export function SearchBarJ({ onSearch, keyword = '', location = '' }: SearchBarJ
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSearch(localKeyword, localLocation);
+
+        // Scroll to the jobs section
+        const jobsSection = document.getElementById('jobs-section');
+        if (jobsSection) {
+            jobsSection.scrollIntoView({ behavior: 'smooth' });
+        }
     };
 
     return (

@@ -76,6 +76,7 @@ const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, candidateId, onComplete }) 
         setIsSubmitting(true);
 
         let score = 0;
+        let total=0;
 
         responses.answers.forEach((answerObj) => {
             const question = quiz.questions.find(q => q.id === answerObj.questionId);
@@ -89,10 +90,12 @@ const QuizTaker: React.FC<QuizTakerProps> = ({ quiz, candidateId, onComplete }) 
                 if (candidateAnswer === correctAnswer?.toString()) {
                     score += question.points;
                 }
+                total+=question.points;
             }
         });
 
         const totalTimeTaken = quiz.duration * 60 - timeRemaining;
+        score=(score/total)*100;
         onComplete(score,totalTimeTaken);
     };
 

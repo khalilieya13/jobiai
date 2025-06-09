@@ -1,4 +1,4 @@
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
@@ -6,9 +6,12 @@ import axios from 'axios';
 const API_URL = 'http://localhost:5000/jobiai/api';
 
 export function Profile() {
-    const [user, setUser] = useState<{ email: string; name?: string } | null>(null);
+    const [user, setUser] = useState<{ email: string; username: string } | null>(null);
     const [isEditing, setIsEditing] = useState(false);
-    const [name, setName] = useState('');
+    const [formData, setFormData] = useState({
+        username: '',
+        email: ''
+    });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const navigate = useNavigate();
@@ -40,7 +43,10 @@ export function Profile() {
             })
                 .then(response => {
                     setUser(response.data);
-                    setName(response.data.name || '');
+                    setFormData({
+                        username: response.data.username || '',
+                        email: response.data.email || ''
+                    });
                     setLoading(false);
                 })
                 .catch(() => {
@@ -59,9 +65,10 @@ export function Profile() {
             const token = localStorage.getItem('token');
             await axios.put(
                 `${API_URL}/profile`,
-                { name },
+                formData,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
+            setUser(prev => prev ? { ...prev, ...formData } : null);
             setIsEditing(false);
             alert('Profile updated successfully');
         } catch (error) {
@@ -127,7 +134,10 @@ export function Profile() {
                                 </button>
                                 <button
                                     onClick={() => {
-                                        setName(user.name || '');
+                                        setFormData({
+                                            username: user.username,
+                                            email: user.email
+                                        });
                                         setIsEditing(false);
                                     }}
                                     className="text-red-600 hover:text-red-500 font-medium"
@@ -140,23 +150,33 @@ export function Profile() {
 
                     <div className="space-y-6">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
                             {isEditing ? (
                                 <input
                                     type="text"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
+                                    value={formData.username}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
                                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                                    placeholder="Enter your name"
+                                    placeholder="Enter your username"
                                 />
                             ) : (
-                                <p className="text-gray-900 px-4 py-2">{user.name || 'Not provided'}</p>
+                                <p className="text-gray-900 px-4 py-2">{user.username || 'Not provided'}</p>
                             )}
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                            <p className="text-gray-900 px-4 py-2">{user.email}</p>
+                            {isEditing ? (
+                                <input
+                                    type="email"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                    placeholder="Enter your email"
+                                />
+                            ) : (
+                                <p className="text-gray-900 px-4 py-2">{user.email}</p>
+                            )}
                         </div>
                     </div>
                 </div>

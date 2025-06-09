@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { SearchBarJ } from '../../components/SearchBarJ.tsx';
 import { JobCard } from '../../components/JobCard.tsx';
+import { JobRecommendation } from '../../components/JobRecommendation.tsx';
 import { Filter, SlidersHorizontal } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-
 
 const filters = {
   employmentType: ['full-time', 'part-time', 'contract', 'internship'],
@@ -39,10 +39,7 @@ export function JobSearch() {
   });
   const [searchQuery, setSearchQuery] = useState({ keyword: '', location: '' });
 
-
-
   const location = useLocation();
-
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -51,8 +48,6 @@ export function JobSearch() {
 
     setSearchQuery({ keyword: keywordFromURL, location: locationFromURL });
   }, [location]);
-
-
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -84,7 +79,6 @@ export function JobSearch() {
     fetchJobs();
   }, []);
 
-  // Filtrage des jobs
   const filteredJobs = jobs.filter((job) => {
     const matchEmploymentType =
         selectedFilters.employmentType.length === 0 ||
@@ -140,10 +134,12 @@ export function JobSearch() {
               location={searchQuery.location}
               onSearch={(keyword, location) => setSearchQuery({ keyword, location })}
           />
-
         </div>
 
-        <div className="flex gap-8">
+        {/* AI Job Recommendations Section */}
+        <JobRecommendation />
+
+        <div id="jobs-section" className="flex gap-8 mt-8">
           {/* Sidebar des filtres */}
           <div className={`w-64 shrink-0 ${showFilters ? 'block' : 'hidden'} md:block`}>
             <div className="bg-white rounded-lg shadow-sm p-6">
@@ -163,13 +159,13 @@ export function JobSearch() {
                             <input
                                 type="checkbox"
                                 value={option}
-                                checked={selectedFilters[category as keyof typeof selectedFilters].includes(option)}
+                                checked={selectedFilters[category as keyof typeof selectedFilters].includes(
+                                    option
+                                )}
                                 onChange={(e) => {
                                   const checked = e.target.checked;
                                   setSelectedFilters((prev) => {
-                                    const updated = [
-                                      ...(prev[category as keyof typeof prev] as string[]),
-                                    ];
+                                    const updated = [...(prev[category as keyof typeof prev] as string[])];
                                     if (checked) {
                                       updated.push(option);
                                     } else {

@@ -62,6 +62,54 @@ export const signin = async (req: Request, res: Response) => {
         res.status(500).json({ message: "Server error", error });
     }
 };
+// 📌 Mettre à jour le nom et l'email de l'utilisateur connecté
+// 📌 Mettre à jour le nom et l'email de l'utilisateur connecté
+export const updateProfile = async (req: Request, res: Response) => {
+    const { username, email } = req.body;
+    const token = req.headers.authorization?.split(' ')[1];
+
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
+
+        // Build update object based on provided fields
+        const updateData: Partial<IUser> = {};
+        if (username) updateData.username = username;
+        if (email) {
+            // Check if email is already in use by another user
+            const existingUser = await User.findOne({ email, _id: { $ne: decoded.id } });
+            if (existingUser) {
+                return res.status(400).json({ message: 'Email already in use by another account' });
+            }
+            updateData.email = email;
+        }
+
+        // Only update if there's something to update
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ message: 'No valid fields to update' });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            decoded.id,
+            updateData,
+            { new: true }
+        ).select('-password');
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({
+            message: 'Profile updated successfully',
+            user: updatedUser
+        });
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        res.status(500).json({ message: 'Error updating profile', error });
+    }
+};
+
 
 // 📌 Récupérer le profil de l'utilisateur
 export const getProfile = async (req: Request, res: Response) => {
@@ -119,6 +167,31 @@ export const deleteAccount = async (req: Request, res: Response) => {
         res.status(500).json({ message: 'Error deleting account', error: err });
     }
 };
+// 📌 Supprimer un compte en tant qu'admin
+export const deleteUserByAdmin = async (req: Request, res: Response) => {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'Unauthorized' });
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string, role: string };
+
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ message: 'Forbidden: Admins only' });
+        }
+
+        const userIdToDelete = req.params.id;
+        const deletedUser = await User.findByIdAndDelete(userIdToDelete);
+
+        if (!deletedUser) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.json({ message: 'User deleted by admin successfully' });
+    } catch (err) {
+        res.status(500).json({ message: 'Error deleting user', error: err });
+    }
+};
+
 
 
 // En mémoire : mapping email -> code

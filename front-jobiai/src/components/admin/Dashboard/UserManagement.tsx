@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
-import { Search, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Trash2, Building2, Download } from 'lucide-react';
 import { User } from '../../../types';
+import { companyAPI, resumeAPI } from '../../../api';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import CVPreview from '../../CVPreview';
 
 interface UserManagementProps {
     users: User[];
@@ -8,14 +13,105 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ users, onDeleteUser }) => {
-    console.log("Users:", users);
     const [searchTerm, setSearchTerm] = useState('');
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState<{ [key: string]: boolean }>({});
+    const [error, setError] = useState<string | null>(null);
+    const [isExporting, setIsExporting] = useState<string | null>(null);
 
     const filteredUsers = users.filter(user =>
         (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
+    const handleViewCompany = async (userId: string) => {
+        try {
+            setLoading({ ...loading, [userId]: true });
+            const response = await companyAPI.getByUserId(userId);
+            console.log('Company response:', response.data);
+
+            if (response.data && response.data.company && response.data.company._id) {
+                navigate(`/company/${response.data.company._id}`);
+            } else {
+                console.error('Company data not found in response:', response.data);
+            }
+        } catch (error) {
+            console.error('Error fetching company:', error);
+        } finally {
+            setLoading({ ...loading, [userId]: false });
+        }
+    };
+
+    const handleExportResume = async (userId: string, username: string) => {
+        setIsExporting(userId);
+        setError(null);
+
+        try {
+            const response = await resumeAPI.getByUserId(userId);
+            console.log('Resume response:', response.data);
+
+            const resumeData = response.data;
+            const fileName = `${username || 'resume'}_CV.pdf`.replace(/[^a-zA-Z0-9]/g, '_');
+
+            if (resumeData.resumeFileUrl) {
+                const link = document.createElement('a');
+                link.href = resumeData.resumeFileUrl;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setIsExporting(null);
+                return;
+            }
+
+            const container = document.createElement('div');
+            container.style.position = 'fixed';
+            container.style.top = '-9999px';
+            container.style.left = '-9999px';
+            container.style.width = '210mm';
+            container.style.height = '297mm';
+            container.style.background = '#ffffff';
+            document.body.appendChild(container);
+
+            const previewElement = document.createElement('div');
+            container.appendChild(previewElement);
+
+            const cvPreview = <CVPreview data={resumeData} />;
+            const root = await import('react-dom/client').then(m => m.createRoot(previewElement));
+            root.render(cvPreview);
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const canvas = await html2canvas(previewElement, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                width: 794,
+                height: 1123,
+                backgroundColor: '#ffffff'
+            });
+
+            root.unmount();
+            document.body.removeChild(container);
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4',
+                compress: true
+            });
+
+            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+            pdf.save(fileName);
+
+        } catch (error) {
+            console.error('Error exporting resume:', error);
+            setError('Failed to export CV');
+        } finally {
+            setIsExporting(null);
+        }
+    };
 
     return (
         <div className="bg-white rounded-lg shadow">
@@ -36,6 +132,12 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onDeleteUser }) 
                     Add User
                 </button>
             </div>
+
+            {error && (
+                <div className="p-4 bg-red-50 border-l-4 border-red-500">
+                    <p className="text-sm text-red-700">{error}</p>
+                </div>
+            )}
 
             <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -62,30 +164,36 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onDeleteUser }) 
                                 </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      user.role === 'recruiter' ? 'bg-indigo-100 text-indigo-800' :
-                          user.role === 'admin' ? 'bg-red-100 text-red-800' :
-                              'bg-purple-100 text-purple-800'
-                  }`}>
-                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                  </span>
+                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    user.role === 'recruiter' ? 'bg-indigo-100 text-indigo-800' :
+                                        user.role === 'admin' ? 'bg-red-100 text-red-800' :
+                                            'bg-purple-100 text-purple-800'
+                                }`}>
+                                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                                </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex items-center space-x-2">
-                                    {user.role === 'recruiter' ? (
-                                        <>
-                                            <button className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                                                Company
-                                            </button>
-                                            <button className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                                                Jobs
-                                            </button>
-                                        </>
-                                    ) : user.role === 'candidate' ? (
-                                        <button className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                                            Resume
+                                    {user.role === 'recruiter' && (
+                                        <button
+                                            onClick={() => handleViewCompany(user._id)}
+                                            className="flex items-center px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                                            disabled={loading[user._id]}
+                                        >
+                                            <Building2 className="h-4 w-4 mr-1" />
+                                            {loading[user._id] ? 'Loading...' : 'Company'}
                                         </button>
-                                    ) : null}
+                                    )}
+                                    {user.role === 'candidate' && (
+                                        <button
+                                            onClick={() => handleExportResume(user._id, user.username)}
+                                            className="flex items-center px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                                            disabled={isExporting === user._id}
+                                        >
+                                            <Download className="h-4 w-4 mr-1" />
+                                            {isExporting === user._id ? 'Exporting...' : 'Resume'}
+                                        </button>
+                                    )}
                                     <button
                                         className="text-red-600 hover:text-red-900"
                                         onClick={() => onDeleteUser(user._id)}
@@ -111,11 +219,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ users, onDeleteUser }) 
                     <div className="text-sm text-gray-700">
                         Showing <span className="font-medium">{filteredUsers.length}</span> of{' '}
                         <span className="font-medium">{users.length}</span> users
-                    </div>
-                    <div>
-                        <button className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                            Export Users
-                        </button>
                     </div>
                 </div>
             </div>

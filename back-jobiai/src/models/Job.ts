@@ -1,4 +1,5 @@
 import mongoose, { Document } from "mongoose";
+import { ICompany } from './Company';
 
 export interface IJob extends Document {
     jobTitle: string;
@@ -13,10 +14,14 @@ export interface IJob extends Document {
     };
     requiredSkills: string[];
     jobDescription: string;
-    idCompany: mongoose.Schema.Types.ObjectId; // Référence vers Company
+    idCompany: ICompany; // Référence vers Company
     status: "Active" | "Paused" | "Closed"; // <-- Ajouté ici
     createdAt?: Date;
     updatedAt?: Date;
+    recommendations?: {
+        resumes: { resumeId: mongoose.Schema.Types.ObjectId; score: number }[];
+    };
+
 }
 
 const JobSchema = new mongoose.Schema<IJob>(
@@ -37,10 +42,26 @@ const JobSchema = new mongoose.Schema<IJob>(
         status: {
             type: String,
             enum: ["Active", "Paused", "Closed"],
-            default: "Active" // <-- Valeur par défaut
+            default: "Active"
+        },
+        recommendations: {
+            resumes: [
+                {
+                    resumeId: {
+                        type: mongoose.Schema.Types.ObjectId,
+                        ref: "Resume", // ou "Resume"
+                        required: true
+                    },
+                    score: {
+                        type: Number,
+                        required: true
+                    }
+                }
+            ]
         }
     },
     { timestamps: true }
 );
 
-export default mongoose.model<IJob>("Job", JobSchema);
+
+export default mongoose.model<IJob>("Jobs", JobSchema);

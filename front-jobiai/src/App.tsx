@@ -10,7 +10,7 @@ import { JobSearch } from './pages/job/JobSearch.tsx';
 import { CVBuilder } from './pages/candidate/CVBuilder.tsx';
 import { CandidateDashboard } from './pages/candidate/CandidateDashboard.tsx';
 import { CompanyDashboard } from './pages/company/CompanyDashboard.tsx';
-import { SkillAssessment } from './pages/SkillAssessment';
+
 import { JobPost } from './pages/job/JobPost.tsx';
 import { UpdateJobPost } from './pages/job/jobedition';
 import { CompanyProfile } from './pages/company/CompanyProfile.tsx';
@@ -25,6 +25,9 @@ import {TestResponse} from "./pages/candidate/TestResponse.tsx";
 import {Profile} from "./pages/Authentication/Profile.tsx";
 import {PasswordReset} from "./pages/Authentication/PasswordReset.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
+import {CompaniesPage} from "./pages/company/companies.tsx";
+import CVBuilderPage from "./pages/candidate/CVBuilderPage.tsx";
+import CompanyJobs from "./pages/company/CompanyJobs.tsx";
 
 
 
@@ -44,21 +47,26 @@ function App() {
           <Route path="/company/profile/creation" element={ <RequireAuth><CompanyProfileCreation /></RequireAuth>} />
           <Route path="/company/profile/edition" element={<RequireAuth><CompanyProfileEdition /></RequireAuth>} />
           <Route path="/company/profile" element={<RequireAuth><CompanyProfile /></RequireAuth>} />
+          <Route path="/company/:id" element={<RequireAuth><CompanyProfile /></RequireAuth>} />
           <Route path="/company/dashboard" element={<RequireAuth><CompanyDashboard/></RequireAuth>} />
           <Route path="/company/candidate/list/:id" element={<RequireAuth><CandidateList /></RequireAuth>} />
+            <Route  path="/company/:id/jobs"  element={<RequireAuth><CompanyJobs/></RequireAuth>} />
 
-          <Route path="/job/post" element={<RequireAuth><JobPost /></RequireAuth>} />
+
+
+            <Route path="/job/post" element={<RequireAuth><JobPost /></RequireAuth>} />
           <Route path="/job/edition/:id" element={<RequireAuth><UpdateJobPost /></RequireAuth>} />
           <Route path="/job/:id" element={<RequireAuth><JobDetails /></RequireAuth>} />
           <Route path="/test/create/:jobId" element={<RequireAuth><TestCreation /></RequireAuth>} />
 
 
           <Route path="/jobs" element={<JobSearch />} />
+          <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/candidates" element={<RequireAuth><CandidateSearch /></RequireAuth>} />
 
+          <Route path="/resume" element={<RequireAuth><CVBuilderPage /></RequireAuth>} />
           <Route path="/cv-builder" element={<RequireAuth><CVBuilder /></RequireAuth>} />
           <Route path="/candidate/dashboard" element={<RequireAuth><CandidateDashboard /></RequireAuth>} />
-          <Route path="/skills-assessment" element={<RequireAuth><SkillAssessment /></RequireAuth>} />
 
           <Route path="/candidate/profile/edition" element={<RequireAuth><CandidateProfileEdition /></RequireAuth>} />
           <Route path="/test/taker/:jobPostId" element={<RequireAuth><TestResponse /></RequireAuth>} />

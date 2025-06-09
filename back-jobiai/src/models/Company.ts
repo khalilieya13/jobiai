@@ -1,5 +1,6 @@
 import mongoose, { Document } from "mongoose";
 
+import { IUser } from './User';
 export interface ICompany extends Document {
     name: string;
     logo?: string;
@@ -12,7 +13,7 @@ export interface ICompany extends Document {
     email: string;
     phone: string;
     address: string;
-    createdBy: mongoose.Schema.Types.ObjectId; // 🔹 Lien avec User
+    createdBy: mongoose.Types.ObjectId | IUser; // 🔹 Lien avec User
 }
 
 const CompanySchema = new mongoose.Schema<ICompany>({
@@ -27,7 +28,7 @@ const CompanySchema = new mongoose.Schema<ICompany>({
     email: { type: String, required: true },
     phone: { type: String, required: true },
     address: { type: String, required: true },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "users", required: true, unique: true } // 🔗 Référence User
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true } // 🔗 Référence User
 });
 
 export default mongoose.model<ICompany>("Company", CompanySchema);

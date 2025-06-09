@@ -4,19 +4,33 @@ import { useEffect, useState, useRef } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
 
+import NotificationComponent from "./Notification";
+import NotificationBadge from "./NotificationBadge";
+
 type JwtPayload = {
     id: string;
     role: string;
     email: string;
 };
 
+interface Notification {
+    _id: string;
+    message: string;
+    link: string;
+    read: boolean;
+}
+
 export function Navbar() {
     const [user, setUser] = useState<JwtPayload | null>(null);
     const [dropdownOpen, setDropdownOpen] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const notificationRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const location = useLocation();
 
+    // Fetch user from token
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (token) {
@@ -31,25 +45,23 @@ export function Navbar() {
             setUser(null);
         }
 
-        // ✅ Ferme le dropdown à chaque changement de page
-        setDropdownOpen(false);
+        setDropdownOpen(false); // Close dropdown on page change
     }, [location]);
 
-
+    // Handle logout
     const handleLogout = () => {
         localStorage.removeItem('token');
         setUser(null);
         navigate('/login');
     };
 
+    // Handle protected route navigation
     const handleProtectedClick = async (path: string) => {
         if (!user) {
-            // Utilisateur non connecté : rediriger vers login
             navigate('/login');
             return;
         }
 
-        // Si utilisateur est connecté, on vérifie les cas spécifiques
         if (path === '/job/post') {
             if (user.role !== 'recruiter') {
                 alert('Only recruiters can post a job.');
@@ -62,31 +74,39 @@ export function Navbar() {
                 });
 
                 if (res.data) {
-                    // Si une compagnie existe : aller à /job/post
                     navigate('/job/post');
                 } else {
-                    // Sinon, rediriger vers création de compagnie
                     navigate('/company/profile/creation');
                 }
             } catch (error) {
-                // En cas d'erreur API, rediriger quand même vers création de compagnie
                 navigate('/company/profile/creation');
             }
         } else {
-            // Pour les autres routes protégées
             navigate(path);
         }
     };
 
+    // Handle clicks outside the dropdowns to close them
     useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+                notificationRef.current && !notificationRef.current.contains(event.target as Node)
+            ) {
                 setDropdownOpen(false);
+                setShowNotifications(false);
             }
-        }
+        };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const handleNotificationsUpdate = (updatedNotifications: Notification[]) => {
+        setNotifications(updatedNotifications);
+    };
+
+    // Count unread notifications
+    const unreadCount = notifications.filter(n => !n.read).length;
 
     return (
         <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -103,6 +123,9 @@ export function Navbar() {
                         <Link to="/jobs" className="text-gray-700 hover:text-indigo-600 text-sm font-medium">
                             Search Job
                         </Link>
+                        <Link to="/companies" className="text-gray-700 hover:text-indigo-600 text-sm font-medium">
+                            Search companies
+                        </Link>
                         <button
                             onClick={() => handleProtectedClick('/candidates')}
                             className="text-gray-700 hover:text-indigo-600 text-sm font-medium"
@@ -110,7 +133,7 @@ export function Navbar() {
                             Search Resume
                         </button>
                         <button
-                            onClick={() => handleProtectedClick('/cv-builder')}
+                            onClick={() => handleProtectedClick('/resume')}
                             className="text-gray-700 hover:text-indigo-600 text-sm font-medium"
                         >
                             Create Resume
@@ -121,7 +144,6 @@ export function Navbar() {
                         >
                              Post Job
                         </span>
-
 
                         {/* User actions */}
                         {!user ? (
@@ -142,26 +164,40 @@ export function Navbar() {
                         ) : (
                             <div className="relative ml-4 flex items-center space-x-4" ref={dropdownRef}>
                                 {/* Notification Icon */}
-                                <Bell className="h-6 w-6 text-indigo-600 cursor-pointer"/>
+                                <div className="relative" ref={notificationRef}>
+                                    <button
+                                        className="relative flex items-center justify-center h-8 w-8 rounded-full hover:bg-gray-100 transition-colors"
+                                        onClick={() => setShowNotifications(!showNotifications)}
+                                        aria-label="Notifications"
+                                    >
+                                        <Bell className="h-5 w-5 text-indigo-600" />
+                                        <NotificationBadge count={unreadCount} />
+                                    </button>
+
+                                    {/* Notification dropdown panel */}
+                                    <NotificationComponent
+                                        visible={showNotifications}
+                                        onClose={() => setShowNotifications(false)}
+                                        onNotificationsUpdate={handleNotificationsUpdate}
+                                    />
+                                </div>
 
                                 {/* Avatar Button */}
                                 <button
                                     type="button"
                                     onClick={(e) => {
-                                        e.stopPropagation(); // important si clic imbriqué
-                                        setDropdownOpen((prev) => !prev); // toggle seulement au clic
+                                        e.stopPropagation();
+                                        setDropdownOpen(!dropdownOpen);
                                     }}
                                     className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-lg font-bold"
                                 >
                                     {user.email?.charAt(0).toUpperCase()}
                                 </button>
 
-
                                 {/* Dropdown Menu */}
                                 {dropdownOpen && (
                                     <div
                                         className="absolute right-0 top-12 w-48 bg-white border rounded-md shadow-lg py-1 z-50">
-                                        {/* Dashboard */}
                                         <Link
                                             to={
                                                 user.role === 'recruiter'
@@ -175,8 +211,6 @@ export function Navbar() {
                                             Dashboard
                                         </Link>
 
-
-                                        {/* Profile */}
                                         <Link
                                             to="/account"
                                             className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -200,17 +234,11 @@ export function Navbar() {
                                                 to="/company/profile/edition"
                                                 className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                             >
-                                                Modify Company Profile
+                                                Edit Company Profile
                                             </Link>
                                         )}
 
-                                        {/* Settings */}
-                                        <Link
-                                            to="/settings"
-                                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        >
-                                            Settings
-                                        </Link>
+
 
                                         {/* Log out */}
                                         <button
@@ -221,7 +249,6 @@ export function Navbar() {
                                         </button>
                                     </div>
                                 )}
-
                             </div>
                         )}
                     </div>

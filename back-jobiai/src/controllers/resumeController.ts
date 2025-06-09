@@ -1,6 +1,68 @@
 import { Request, Response } from "express";
 import Resume from "../models/Resume";
 import { AuthRequest } from "../middlewares/authMiddleware"; // Middleware d'auth
+import mongoose from 'mongoose';
+export const getResumeByUserId = async (req: Request, res: Response) => {
+    const userId = req.params.userId;
+    console.log("Received userId:", userId);
+
+    // Vérification que userId est un ObjectId valide
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    try {
+        // Recherche du CV lié à cet utilisateur
+        const resume = await Resume.findOne({ createdBy: userId });
+
+        if (!resume) {
+            return res.status(404).json({ message: "Resume not found for this user" });
+        }
+
+        return res.status(200).json(resume);
+    } catch (error) {
+        console.error("Error fetching resume:", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
+export const uploadPdfAndCreateResume = async (req: AuthRequest, res: Response) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ message: "Non autorisé" });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ message: "Aucun fichier uploadé" });
+        }
+
+        const pdfUrl = `${req.protocol}://${req.get('host')}/uploads/pdfs/${req.file.filename}`;
+
+        console.log("Reçu dans req.body:", req.body); // debug temporaire
+
+        const newResume = new Resume({
+            personalInfo: {
+                fullName: req.body.fullName || "Nom inconnu",
+                title: req.body.title || "Titre non spécifié",
+                email: req.body.email || "email@inconnu.com",
+                phone: req.body.phone || "Téléphone non spécifié",
+                address: req.body.address || "Adresse non spécifiée",
+                summary: req.body.summary || "Résumé non fourni"
+            },
+            resumeFileUrl: pdfUrl,
+            createdBy: req.user.id,
+            isFromPdf: true
+        });
+
+        await newResume.save();
+
+        res.status(201).json({ message: "CV créé avec succès", resume: newResume });
+    } catch (error) {
+        console.error("Erreur lors de la création du CV :", error);
+        res.status(500).json({ message: "Erreur lors de la création du CV", error });
+    }
+};
+
+
 
 // 📌 Créer un CV lié à l'utilisateur connecté
 export const createResume = async (req: AuthRequest, res: Response) => {

@@ -6,7 +6,7 @@ import {
     getQuizById,
     updateQuiz,
     deleteQuiz,
-    getQuizzesByJob
+    getQuizzesByJob, getCandidateScore, submitQuizResponse
 } from "../controllers/quizController";
 
 const router = express.Router();
@@ -23,5 +23,10 @@ router.get("/:id", getQuizById); // 🔹 Récupérer un quiz par ID
 router.put("/:id", auth, updateQuiz); // 🔹 Mettre à jour un quiz
 // @ts-ignore
 router.delete("/:id", auth, deleteQuiz); // 🔹 Supprimer un quiz
+
+// @ts-ignore
+router.get('/:quizId/:candidateId', getCandidateScore);
+// @ts-ignore
+router.post('/quiz-response/:quizId', submitQuizResponse);
 
 export default router;

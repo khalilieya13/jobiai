@@ -1,17 +1,19 @@
-import  { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/admin/Layout/Sidebar';
 import KpiSection from '../components/admin/Dashboard/KpiSection';
 import UserManagement from '../components/admin/Dashboard/UserManagement';
-import { User, Job } from '../types';
-import { authAPI, jobAPI,companyAPI } from '../api';
+import { User, Job, Company } from '../types';
+import { authAPI, jobAPI, companyAPI } from '../api';
 import { Trash2, Eye } from 'lucide-react';
 
 const AdminDashboard = () => {
+    const navigate = useNavigate();
     const [activeSection, setActiveSection] = useState<'dashboard' | 'users' | 'companies' | 'jobs'>('dashboard');
     const [selectedUserType, setSelectedUserType] = useState<'all' | 'recruiters' | 'candidates'>('all');
     const [users, setUsers] = useState<User[]>([]);
     const [jobs, setJobs] = useState<Job[]>([]);
-    const [companies, setCompanies] = useState<any[]>([]);
+    const [companies, setCompanies] = useState<Company[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -21,53 +23,45 @@ const AdminDashboard = () => {
                 setLoading(true);
                 setError(null);
 
-                // Ajout de l'appel pour récupérer les entreprises
                 const [usersRes, jobsRes, companiesRes] = await Promise.all([
                     authAPI.getAllUsers(),
                     jobAPI.getAll(),
-                    companyAPI.getAll()  // Ajout de la récupération des entreprises
+                    companyAPI.getAll()
                 ]);
 
-                // Log des réponses pour vérifier la structure des données
                 console.log("Users Response:", usersRes.data);
                 console.log("Jobs Response:", jobsRes.data);
-                console.log("Companies Response:", companiesRes.data);  // Log des entreprises
+                console.log("Companies Response:", companiesRes.data);
 
-                // Vérification et mise à jour du state pour les utilisateurs
                 if (Array.isArray(usersRes.data)) {
                     setUsers(usersRes.data);
                 } else {
                     console.error('Users data is not an array:', usersRes.data);
-                    setUsers([]);  // Réinitialisation des utilisateurs si la réponse n'est pas un tableau
+                    setUsers([]);
                 }
 
-                // Vérification et mise à jour du state pour les jobs
                 if (Array.isArray(jobsRes.data)) {
-                    // Normalize the jobs by replacing `idCompany` with a `company` field
-                    const jobsWithCompany = jobsRes.data.map(job => ({
-                        ...job,
-                        company: job.idCompany,
-                    }));
-
-                    setJobs(jobsWithCompany);
+                    setJobs(jobsRes.data);
                 } else {
                     console.error('Jobs data is not an array:', jobsRes.data);
                     setJobs([]);
                 }
 
-                // Vérification et mise à jour du state pour les entreprises
                 if (Array.isArray(companiesRes.data)) {
                     setCompanies(companiesRes.data);
+                } else if (companiesRes.data && typeof companiesRes.data === 'object') {
+                    const companiesArray = companiesRes.data.companies || [];
+                    setCompanies(companiesArray);
                 } else {
-                    console.error('Companies data is not an array:', companiesRes.data);
-                    setCompanies([]);  // Réinitialisation des entreprises si la réponse n'est pas un tableau
+                    console.error('Companies data is not in expected format:', companiesRes.data);
+                    setCompanies([]);
                 }
             } catch (err: any) {
                 console.error('Error fetching data:', err);
                 setError(err.message || 'Failed to fetch data. Please check your connection and try again.');
                 setUsers([]);
                 setJobs([]);
-                setCompanies([]);  // Réinitialisation des entreprises en cas d'erreur
+                setCompanies([]);
             } finally {
                 setLoading(false);
             }
@@ -76,10 +70,9 @@ const AdminDashboard = () => {
         fetchData();
     }, []);
 
-
     const handleDeleteUser = async (userId: string) => {
         try {
-            await authAPI.deleteAccount();
+            await authAPI.deleteUserByAdmin(userId);
             setUsers(prevUsers => prevUsers.filter(user => user._id !== userId));
         } catch (err: any) {
             console.error('Error deleting user:', err);
@@ -94,6 +87,16 @@ const AdminDashboard = () => {
         } catch (err: any) {
             console.error('Error deleting job:', err);
             setError(err.message || 'Failed to delete job. Please try again.');
+        }
+    };
+
+    const handleDeleteCompany = async (companyId: string) => {
+        try {
+            await companyAPI.delete(companyId);
+            setCompanies(prevCompanies => prevCompanies.filter(company => company._id !== companyId));
+        } catch (err: any) {
+            console.error('Error deleting company:', err);
+            setError(err.message || 'Failed to delete company. Please try again.');
         }
     };
 
@@ -219,11 +222,11 @@ const AdminDashboard = () => {
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                     {companies.map((company) => (
-                                        <tr key={company.id}>
+                                        <tr key={company._id}>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
                                                     <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                                                        {company.name.charAt(0)}
+                                                        {company.name?.charAt(0)}
                                                     </div>
                                                     <div className="ml-4">
                                                         <div className="text-sm font-medium text-gray-900">{company.name}</div>
@@ -235,16 +238,25 @@ const AdminDashboard = () => {
                                                 <div className="text-sm text-gray-900">{company.industry}</div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {jobs.filter(job => job.company === company.id).length} active jobs
+                                                {jobs.filter(job => job.company?._id === company._id).length} active jobs
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                <button className="text-indigo-600 hover:text-indigo-900">
+                                                <button
+                                                    className="text-indigo-600 hover:text-indigo-900"
+                                                    onClick={() => navigate(`/company/${company._id}`)}
+                                                >
                                                     <Eye className="h-5 w-5" />
                                                 </button>
-                                                <button className="text-red-600 hover:text-red-900">
+                                                <button
+                                                    className="text-red-600 hover:text-red-900"
+                                                    onClick={() => handleDeleteCompany(company._id)}
+                                                >
                                                     <Trash2 className="h-5 w-5" />
                                                 </button>
-                                                <button className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                                                <button
+                                                    className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                                    onClick={() => navigate(`/company/${company._id}/jobs`)}
+                                                >
                                                     View Jobs
                                                 </button>
                                             </td>
@@ -252,6 +264,12 @@ const AdminDashboard = () => {
                                     ))}
                                     </tbody>
                                 </table>
+
+                                {companies.length === 0 && (
+                                    <div className="text-center py-10">
+                                        <p className="text-gray-500">No companies found</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -289,10 +307,16 @@ const AdminDashboard = () => {
                                                 >
                                                     <Trash2 className="h-5 w-5" />
                                                 </button>
-                                                <button className="text-indigo-600 hover:text-indigo-900">
+                                                <button
+                                                    className="text-indigo-600 hover:text-indigo-900"
+                                                    onClick={() => navigate(`/job/${job._id}`)}
+                                                >
                                                     <Eye className="h-5 w-5" />
                                                 </button>
-                                                <button className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700">
+                                                <button
+                                                    className="px-2 py-1 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700"
+                                                    onClick={() => navigate(`/company/candidate/list/${job._id}`)}
+                                                >
                                                     View Applications
                                                 </button>
                                             </td>
@@ -300,6 +324,12 @@ const AdminDashboard = () => {
                                     ))}
                                     </tbody>
                                 </table>
+
+                                {jobs.length === 0 && (
+                                    <div className="text-center py-10">
+                                        <p className="text-gray-500">No jobs found</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

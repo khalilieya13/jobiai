@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import QuizTaker from '../../components/candidate/QuizTaker';
 import { Quiz } from '../../types';
+import {jwtDecode} from "jwt-decode";
+
 
 export function TestResponse() {
     const { jobPostId } = useParams(); // Si tu passes le jobPostId dans l'URL
@@ -10,8 +12,19 @@ export function TestResponse() {
     const [loading, setLoading] = useState(true);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const navigate = useNavigate(); // For navigation after success
+    interface DecodedToken {
+        id: string;
+        // Ajoute d'autres champs si nécessaires (email, role, etc.)
+    }
 
-    const candidateId = "ID_DU_CANDIDAT"; // récupère ça depuis ton auth ou props
+    let candidateId = '';
+
+    const token = localStorage.getItem('token');
+    if (token) {
+        const decoded = jwtDecode<DecodedToken>(token);
+        candidateId = decoded.id;
+    }
+
 
     useEffect(() => {
         const fetchQuiz = async () => {
@@ -60,10 +73,15 @@ export function TestResponse() {
         try {
             const token = localStorage.getItem('token');
 
-            // 1. Soumettre les réponses au test
-            await axios.put(
-                `http://localhost:5000/jobiai/api/quiz/${quiz?.id}`,
+            if (!quiz) {
+                alert("Quiz non chargé");
+                return;
+            }
+
+            await axios.post(
+                `http://localhost:5000/jobiai/api/quiz/quiz-response/${quiz.id}`,
                 {
+                    candidateId,
                     score,
                     timeTaken,
                 },
@@ -74,29 +92,21 @@ export function TestResponse() {
                 }
             );
 
-            // 2. Postuler automatiquement au job
-            const applyResponse = await axios.post(
+            // Then apply to the job
+            await axios.post(
                 `http://localhost:5000/jobiai/api/candidacy/apply`,
-                {
-                    jobPost: quiz?.jobPostId // ou jobPostId directement depuis useParams()
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${token}`
-                    }
-                }
+                { jobPost: quiz.jobPostId },
+                { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            console.log('Candidature enregistrée :', applyResponse.data);
             setSuccessMessage('Réponses envoyées et candidature enregistrée !');
-            setTimeout(() => {
-                navigate('/candidate/dashboard'); // Redirect to the candidate dashboard after success
-            }, 2000); // Wait 2 seconds before redirecting to show the success message
+            setTimeout(() => navigate('/candidate/dashboard'), 2000);
         } catch (error) {
-            console.error("Erreur lors de la soumission ou de la candidature :", error);
+            console.error(error);
             alert("Une erreur est survenue pendant la soumission.");
         }
     };
+
 
     if (loading) return <p>Chargement du test...</p>;
     if (!quiz) return <p>Aucun quiz trouvé.</p>;

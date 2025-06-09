@@ -3,32 +3,32 @@ import mongoose, { Document } from "mongoose";
 export interface ICandidacy extends Document {
     jobPost: mongoose.Schema.Types.ObjectId;
     candidate: mongoose.Schema.Types.ObjectId;
-    status: "pending" | "accepted" | "rejected"; // Statut de la candidature
+    status: "pending" | "accepted" | "rejected";
     appliedAt: Date;
 }
 
 const CandidacySchema = new mongoose.Schema<ICandidacy>({
     jobPost: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Job", // Référence au modèle des offres d'emploi
+        ref: "Jobs", // Référence au modèle des offres d'emploi
         required: true
     },
     candidate: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // Référence au modèle des candidats
+        ref: "users", // Référence au modèle "users" (en minuscules pour correspondre à votre modèle User)
         required: true
     },
     status: {
         type: String,
         enum: ["pending", "accepted", "rejected"],
-        default: "pending" // Par défaut, la candidature est en attente
+        default: "pending"
     },
     appliedAt: {
         type: Date,
-        default: Date.now // Date de candidature par défaut
+        default: Date.now
     }
 }, {
-    timestamps: true // Ajoute createdAt et updatedAt automatiquement
+    timestamps: true
 });
 
 export default mongoose.model<ICandidacy>("Candidacy", CandidacySchema);

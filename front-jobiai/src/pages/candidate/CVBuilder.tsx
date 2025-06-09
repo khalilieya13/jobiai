@@ -121,7 +121,7 @@ interface CVData {
      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-     pdf.save('mon_cv.pdf');
+     pdf.save('myresume.pdf');
    };
 
   const [resumeId, setResumeId] = useState<string | null>(null);
@@ -192,34 +192,6 @@ interface CVData {
        console.error("Erreur lors de l'envoi du CV:", error);
        alert("Erreur lors de l'envoi du CV");
      }
-   };
-
-   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-     const file = e.target.files?.[0];
-     if (!file) return;
-
-     const reader = new FileReader();
-     reader.onload = (event) => {
-       try {
-         const importedData = JSON.parse(event.target?.result as string);
-
-         // Validate the imported data structure
-         if (!importedData.personalInfo || !Array.isArray(importedData.education)) {
-           throw new Error('Invalid CV data format');
-         }
-
-         setCVData(importedData);
-       } catch (error) {
-         console.error('Error parsing CV data:', error);
-         alert('Failed to import CV: Invalid file format');
-       }
-     };
-
-     reader.onerror = () => {
-       alert('Failed to read file');
-     };
-
-     reader.readAsText(file);
    };
 
 
@@ -297,16 +269,7 @@ interface CVData {
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">CV Builder</h1>
             <div className="flex gap-4">
-              <label
-                  className="flex items-center px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 cursor-pointer">
-                <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleFileImport}
-                    className="hidden"
-                />
-                Import CV
-              </label>
+
               <button
                   onClick={handleExportPDF}
                   className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
@@ -373,6 +336,7 @@ interface CVData {
                       />
                     </div>
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Phone</label>
                     <div className="mt-1 relative rounded-md shadow-sm">
@@ -388,6 +352,16 @@ interface CVData {
                       />
                     </div>
                   </div>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700">Address</label>
+                  <input
+                      type="text"
+                      name="address"
+                      value={cvData.personalInfo.address}
+                      onChange={handlePersonalInfoChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                  />
                 </div>
                 <div className="mt-4">
                   <label className="block text-sm font-medium text-gray-700">Professional Summary</label>
@@ -847,7 +821,7 @@ interface CVData {
             <div className="col-span-6">
               <div
                   className="border border-gray-300 shadow-lg rounded-lg bg-white p-6 sticky top-6 max-h-screen overflow-y-auto">
-                <h2 className="text-xl font-semibold text-gray-800 mb-4">Aperçu du CV</h2>
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">CV preview</h2>
                 <CVPreview data={cvData}/>
               </div>
             </div>

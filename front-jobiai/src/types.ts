@@ -13,11 +13,23 @@ export interface Job {
   };
   jobDescription: string;
   requirements: string[];
-  postedAt: string;
+  createdAt: string;
+  status: string;
 }
 export interface Company {
   _id: string;
   name: string;
+  logo?: string;
+  location: string;
+  website?: string;
+  size: string;
+  industry: string;
+  founded: string;
+  description: string;
+  email: string;
+  phone: string;
+  address: string;
+  createdBy: string;
 }
 export interface User {
   _id: string;
@@ -80,18 +92,21 @@ export interface ResumeCandidate {
     url: string;
   }[];
   createdBy: string;
+  resumeFileUrl?: string;
+
 }
 export interface Question {
   id: string;
   text: string;
-  type: 'multiple-choice' | 'true-false' | 'short-answer';
+  type: 'multiple-choice' | 'true-false' ;
   options?: string[];
   correctAnswer?: string | string[];
   points: number;
 }
 
 export interface Quiz {
-  id: string;
+  id?: string;
+  _id?: string;
   title: string;
   description: string;
   jobPostId: string;
@@ -111,4 +126,11 @@ export interface CandidateResponse {
     answer: string | string[];
   }[];
   score?: number;
+}
+export interface IQuizResponse {
+  quizId: Quiz;
+  candidateId: User ; // fait référence à un User
+  score: number;
+  timeTaken: number;
+  submittedAt: string;
 }

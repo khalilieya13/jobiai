@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import http from "http";
 import { Server } from "socket.io";
+import path from "path";
 
 import connectDB from "./config/db";
 import authRoutes from "./routes/authRoutes";
@@ -13,6 +14,8 @@ import resumeRoutes from "./routes/resumeRoutes";
 import candidacyRoutes from "./routes/candidacyRoutes";
 import quizRoutes from "./routes/quizRoutes";
 import dashboardRoutes from "./routes/dashboardRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
+import recommendationRoutes from "./routes/recommendationRoutes";
 
 
 dotenv.config();
@@ -24,7 +27,7 @@ const server = http.createServer(app); // ⚠️ Crée un serveur HTTP
 // Crée une instance Socket.IO et configure le CORS
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000", // ton frontend
+        origin: ["http://localhost:5173", "http://localhost:5174"], // ton frontend
         methods: ["GET", "POST"],
         credentials: true,
     },
@@ -41,6 +44,9 @@ app.use("/jobiai/api/resume", resumeRoutes);
 app.use("/jobiai/api/candidacy", candidacyRoutes);
 app.use("/jobiai/api/quiz", quizRoutes);
 app.use("/jobiai/api/dashboard", dashboardRoutes);
+app.use("/jobiai/api/notification", notificationRoutes);
+app.use("/jobiai/api/recommendation", recommendationRoutes);
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Stockage des sockets connectés : userId -> socketId
 const connectedUsers = new Map<string, string>();

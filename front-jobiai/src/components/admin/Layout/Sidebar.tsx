@@ -4,9 +4,7 @@ import {
     Users,
     Building,
     Briefcase,
-    Settings,
     LogOut,
-    BarChart
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -39,19 +37,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSection }) =>
             name: 'Jobs',
             icon: <Briefcase size={20} />,
             action: () => setActiveSection('jobs')
-        },
-        {
-            id: 'reports',
-            name: 'Reports',
-            icon: <BarChart size={20} />,
-            action: () => {}
-        },
-        {
-            id: 'settings',
-            name: 'Settings',
-            icon: <Settings size={20} />,
-            action: () => {}
         }
+
     ];
 
     return (
@@ -91,7 +78,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeSection, setActiveSection }) =>
                         </div>
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-700">Admin User</p>
-                            <p className="text-xs text-gray-500">admin@example.com</p>
+                            <p className="text-xs text-gray-500">admin@gmail.com</p>
                         </div>
                     </div>
                     <button className="mt-3 flex items-center text-sm text-gray-500 hover:text-gray-700">

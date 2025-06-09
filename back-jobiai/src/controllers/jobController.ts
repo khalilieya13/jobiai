@@ -88,6 +88,25 @@ export const deleteJob = async (req: Request, res: Response) => {
     }
 };
 
+
+
+export const getJobsByCompanyId = async (req: Request, res: Response) => {
+    try {
+        const companyId = req.params.companyId;
+
+        // Recherche des offres liées à cette compagnie
+        const jobs = await Job.find({ idCompany: companyId })
+            .populate("idCompany") // Optionnel : si tu veux avoir les infos de la compagnie aussi
+            .sort({ createdAt: -1 });
+
+        res.status(200).json(jobs);
+    } catch (error) {
+        console.error("Erreur lors de la récupération des jobs :", error);
+        res.status(500).json({ message: "Erreur serveur" });
+    }
+};
+
+
 // 📌 Récupérer tous les jobs d'une entreprise liée à l'utilisateur connecté
 export const getCompanyJobs = async (req: AuthRequest, res: Response) => {
     try {
